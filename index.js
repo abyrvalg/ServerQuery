@@ -1,46 +1,69 @@
+const HB = require('handlebars');
 var globalConfig = {},
-	hb = require('handlebars');
+	allResources = {};
+	
+function executeCall(query){
+	var obj = {};
+	for(let i = 0; i < query.length; i++) {
+		if(typeof query[i] == 'string') {
+			console.log(query[i]);
+			obj[query[i]] = allResources[query[i]]();
+			continue;
+		}
+		for(let key in query[i]){
+			try {
+				var params = query[i][key] && query[i][key].join('|').replace(/_([\w\.]+)/g, function(match, key){
+						let path = key.split('.'),
+							val = obj;
+						for(let i = 0; i < path.length; i++){
+							if(!val) {
+								break;
+							}
+							val = val[path[i]];
+						}
+						return val || match;
+					}).split('|');
+				obj[key] = allResources[key].apply(allResources[key], params);
+			}
+			catch(e){
+				console.log(e);
+			}
+		}		
+	}
+	return obj;
+}
 module.exports = {
 	setConfig(config){
 		globalConfig = config;
 	},
-	setupRoutes(getter){
-		return function(req, res, next) {
-			var scope = req.query.scope,
-				obj = {};
-			if(scope) {
-				scope = scope.split('|');
-				let noKeys = req.query.noKeys && scope.length == 1;
-				console.log(scope);
-				for(let i = 0; i < scope.length; i++) {
-					let keyValue = scope[i].split(':');
-					try {
-						console.log(params);
-						var params = keyValue[1] && keyValue[1].replace(/_([\w\.]+)/g, function(match, key){
-								let path = key.split('.'),
-									val = obj;
-								for(let i = 0; i < path.length; i++){
-									if(!val) {
-										break;
-									}
-									val = val[path[i]];
-								}
-								return val || match;
-							});
-						if(noKeys) {
-							obj = getter[keyValue[0]](params);
-						} else {
-							console.log(getter);
-							obj[keyValue[0]] = getter[keyValue[0]](params);
-							console.log(getter);
-						}
-					}
-					catch(e){
-						
-					}
-				}
+	addResources(resources){
+		Object.assign(allResources, resources);
+	},
+	setupRoute(route, app){
+		app.all(route, function(req, resp){
+			try{
+				var result = executeCall(JSON.parse(req.query.query));
+				resp.json(result);
 			}
-			res.json(obj);
+			catch(e){
+				console.log(e);
+			}
+		});
+	},
+	call(query, cb, template){
+		var result = executeCall(query);
+		if(!template) {
+			cb(result);
 		}
+		var fs = require('fs');
+		fs.readFile('templates/'+template.replace(/\./g, '')+'.hbs', function(err, data){
+			if (!err) {
+				var source = data.toString();
+				template = hb.compile(source)
+				cb(template(result));
+			} else {
+				console.log(err);
+			}
+		});
 	}
 }
