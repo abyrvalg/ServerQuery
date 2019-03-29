@@ -59,7 +59,7 @@ module.exports = {
 		fs.readFile('templates/'+template.replace(/\./g, '')+'.hbs', function(err, data){
 			if (!err) {
 				var source = data.toString();
-				template = hb.compile(source)
+				template = HB.compile(source)
 				cb(template(result));
 			} else {
 				console.log(err);
