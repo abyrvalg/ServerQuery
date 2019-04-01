@@ -9,12 +9,13 @@ function executeCall(query){
 		let result,currentKey;
 		if(typeof query[i] == 'string') {
 			currentKey = query[i]
-			result = allResources[currentKey]();			;			
+			result = promise ? promise.then((obj)=>allResources[currentKey]()) : allResources[currentKey]();			;			
 		}
 		else {
 			for(let key in query[i]){
-				try {
-					var params = query[i][key] && query[i][key].join('|').replace(/_([\w\.]+)/g, function(match, key){
+				try {					
+					result = promise ? promise.then((obj)=>{
+						var params = query[i][key] && query[i][key].join('|').replace(/_([\w\.]+)/g, function(match, key){
 							let path = key.split('.'),
 								val = obj;
 							for(let i = 0; i < path.length; i++){
@@ -25,7 +26,8 @@ function executeCall(query){
 							}
 							return val || match;
 						}).split('|');
-					result = allResources[key].apply(allResources[key], params);
+						return allResources[key].apply(allResources[key], params)
+					}) : allResources[key].apply(allResources[key], params);
 					currentKey = key;
 				}
 				catch(e){
