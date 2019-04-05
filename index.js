@@ -1,11 +1,11 @@
 const HB = require('handlebars');
-const path = require('path');
+const PATH = require('path');
 var resourceFolder,
 	allResources = {};
 function getResourceFunction(key){
 	return allResources[key] || (()=>{
-		var match = key.match(/((?:\w+)+)?\.(\w+)$/);
-		return require(path.dirname(require.main.filename) + '/'+resourceFolder+'/'+(match && match[1].replace(/\./g, '/') || '/index'))[match && match[2] || 'index']
+		var match = key.match(/((?:\w+)+)?\_(\w+)$/);
+		return require(PATH.dirname(require.main.filename) + '/'+resourceFolder+'/'+(match && match[1].replace(/\./g, '/') || '/index'))[match && match[2] || 'index']
 	})();
 }
 
@@ -84,15 +84,14 @@ module.exports = {
 			return new Promise(function(resolver){
 				fs.readFile('templates/'+template.replace(/\./g, '')+'.hbs', function(err, data){
 					if (!err) {
-						var source = data.toString();
-						template = HB.compile(source)
+						data = data.toString();
+						template = HB.compile(data);
 						resolver(template(result));
 					} else {
 						console.log(err);
 					}
 				});
 			});			
-		})
-		
+		})		
 	}
 }
