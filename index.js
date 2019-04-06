@@ -28,16 +28,17 @@ function executeCall(query){
 	for(let i = 0; i < query.length; i++) {
 		let result,currentKey;
 		if(typeof query[i] == 'string') {
-			currentKey = query[i]
-			result = promise ? promise.then((obj)=>getResourceFunction(currentKey)()) : getResourceFunction(currentKey)();			;			
+			currentKey = query[i].split('>');
+			result = promise ? promise.then((obj)=>getResourceFunction(currentKey[0])()) : getResourceFunction(currentKey[0])();			;			
 		}
 		else {
 			for(let key in query[i]){
+				currentKey = key.split('>');
 				try {					
 					result = promise ? promise.then((obj)=>{
-						return getResourceFunction(key).apply(null, getParams(query[i][key], obj))
-					}) : getResourceFunction(key).apply(null, getParams(query[i][key], obj));
-					currentKey = key;
+						console.log('');
+						return getResourceFunction(currentKey[0]).apply(null, getParams(query[i][key], obj))
+					}) : getResourceFunction(currentKey[0]).apply(null, getParams(query[i][key], obj));
 				}
 				catch(e){
 					console.log(e);
@@ -45,10 +46,13 @@ function executeCall(query){
 			}
 		}
 		if(result instanceof Promise){
-			promise = result.then(function(r){obj[currentKey] = r; return obj});
+			promise = result.then(function(r){
+				obj[currentKey.length > 1 ? currentKey[1] : currentKey[0]] = r; 
+				return obj
+			});
 		}
 		else {
-			obj[currentKey] = result;
+			obj[currentKey.length > 1 ? currentKey[1] : currentKey[0]] = result;
 		}
 	}
 	return promise || Promise.resolve(obj);
