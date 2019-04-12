@@ -4,13 +4,13 @@ var resourceFolder,
 	allResources = {};
 function getResourceFunction(key){
 	return allResources[key] || (()=>{
-		var match = key.match(/((?:\w+)+)?\_(\w+)$/);
+		var match = key.match(/((?:[^_])+)??(?:\_(\w+))?$/);
 		return require(PATH.dirname(require.main.filename) + '/'+resourceFolder+'/'+(match && match[1].replace(/\./g, '/') || '/index'))[match && match[2] || 'index']
 	})();
 }
 
 function getParams(key, obj){
-	return key && key.join('|').replace(/_([\w\.]+)/g, function(match, key){
+	return JSON.parse(key && JSON.stringify(key).replace(/"?_([\w\.]+)"?/g, function(match, key){
 		let path = key.split('.'),
 			val = obj;
 		for(let i = 0; i < path.length; i++){
@@ -19,8 +19,11 @@ function getParams(key, obj){
 			}
 			val = val[path[i]];
 		}
+		if(typeof val == 'object') {
+			val = JSON.stringify(val);
+		}
 		return val || match;
-	}).split('|');
+	}));
 }
 function executeCall(query){
 	var obj = {},
@@ -36,8 +39,8 @@ function executeCall(query){
 				currentKey = key.split('>');
 				try {					
 					result = promise ? promise.then((obj)=>{
-						console.log('');
-						return getResourceFunction(currentKey[0]).apply(null, getParams(query[i][key], obj))
+
+						return getResourceFunction(currentKey[0]).apply(null, getParams(query[i][key], obj));
 					}) : getResourceFunction(currentKey[0]).apply(null, getParams(query[i][key], obj));
 				}
 				catch(e){
