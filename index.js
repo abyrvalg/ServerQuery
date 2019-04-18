@@ -10,13 +10,12 @@ function getResourceFunction(key){
 			try{
 				func = require(PATH.dirname(require.main.filename) + '/'+resourceFolders[i]+'/'+(match && match[1].replace(/\./g, '/') || '/index'))[match && match[2] || 'index'];
 			}
-			catch(e){
-				//console.log(e);
-			}
+			catch(e){}
 			if(func) {
 				return func
 			}
 		}
+		return ()=>{console.log("resource:"+key+" is not found"); return null;}
 	})();
 }
 
@@ -86,12 +85,12 @@ function executeCall(query){
 		}
 		else {
 			if(currentKey.mode == "standard") {
-				obj[currentKey.settterKey] = r; 
+				obj[currentKey.settterKey] = result; 
 			}
 			else if(currentKey.mode == "dominant") {
-				obj = r;
+				obj = result;
 			}
-			buffer[currentKey.settterKey] = r;
+			buffer[currentKey.settterKey] = result;
 		}
 	}
 	return promise || Promise.resolve(obj);
