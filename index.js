@@ -1,7 +1,7 @@
-const HB = require('handlebars');
 const PATH = require('path');
 var resourceFolders = [],
-	allResources = {};
+	allResources = {},
+	logger;
 function getResourceFunction(key){
 	return allResources[key] || (()=>{
 		var match = key.match(/((?:[^_])+)??(?:\_(\w+))?$/);
@@ -103,20 +103,11 @@ module.exports = {
 		resourceFolders.push(folder);
 		return this;
 	},
-	setupRoute(route, app){
-		app.all(route, function(req, resp){
-			try{
-				var promise = executeCall(JSON.parse(req.query.query));
-				promise.then((result)=>{
-					resp.send(result)
-				});
-			}
-			catch(e){
-				console.log(e);
-			}
-		});
-	},
-	call(query, template){
+	call(query){
 		return executeCall(query);
+	},
+	setLogger(loggerToset){
+		logger = loggerToSet;
+		return this;
 	}
 }
