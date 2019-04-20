@@ -1,7 +1,8 @@
 const PATH = require('path');
 var resourceFolders = [],
 	allResources = {},
-	logger;
+	logger,
+	async = true;
 function getResourceFunction(key){
 	return allResources[key] || (()=>{
 		var match = key.match(/((?:[^_])+)??(?:\_(\w+))?$/);
@@ -66,7 +67,7 @@ function executeCall(query){
 					}) : getResourceFunction(currentKey.gettterKey).apply(null, getParams(query[i][key], buffer));
 				}
 				catch(e){
-					console.log(e);
+					logger && logger.error(e);
 				}
 			}
 		}
@@ -93,11 +94,12 @@ function executeCall(query){
 			buffer[currentKey.settterKey] = result;
 		}
 	}
-	return promise || Promise.resolve(obj);
+	return async ? (promise || Promise.resolve(obj)) : obj;
 }
 module.exports = {
 	addResources(resources){
 		Object.assign(allResources, resources);
+		return this;
 	},
 	addResourceFolder(folder){
 		resourceFolders.push(folder);
@@ -109,5 +111,8 @@ module.exports = {
 	setLogger(loggerToset){
 		logger = loggerToSet;
 		return this;
+	},
+	setAsync(isAsync){
+		asinc = isAsync;
 	}
 }
