@@ -1,13 +1,18 @@
-var dataUrl;
+var dataUrl = window.location.origin+'/data';
 module.exports = {
-	call(query, template){
+	call(query){
 		return new Promise((resolver)=>{
 			var xmlHttpRequest = new XMLHttpRequest();
 			xmlHttpRequest.addEventListener('load', ()=>{
-				resolver(this.responseText);
+				try{
+					resolver(JSON.parse(xmlHttpRequest.responseText));
+				}
+				catch(e){
+					resolver(xmlHttpRequest.responseText);
+				}
 			});
-			xmlHttpRequest.open('POST', dataUrl);
-			xmlHttpRequest.send('query='+JSON.stringify(query));
+			xmlHttpRequest.open('GET', dataUrl+'?query='+JSON.stringify(query));
+			xmlHttpRequest.send();
 		});		
 		
 	},
