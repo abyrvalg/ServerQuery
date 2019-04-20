@@ -1,23 +1,9 @@
-const PATH = require('path');
-var resourceFolders = [],
-	allResources = {},
+var allResources = {},
 	logger,
-	async = true;
+	async = true,
+	resourceMethod;
 function getResourceFunction(key){
-	return allResources[key] || (()=>{
-		var match = key.match(/((?:[^_])+)??(?:\_(\w+))?$/);
-		for(let i = 0; i < resourceFolders.length; i++){
-			let func;
-			try{
-				func = require(PATH.dirname(require.main.filename) + '/'+resourceFolders[i]+'/'+(match && match[1].replace(/\./g, '/') || '/index'))[match && match[2] || 'index'];
-			}
-			catch(e){}
-			if(func) {
-				return func
-			}
-		}
-		return ()=>{console.log("resource:"+key+" is not found"); return null;}
-	})();
+	return allResources[key] || (resourceMethod && resourceMethod(key));
 }
 
 function getParams(key, obj){
@@ -101,10 +87,6 @@ module.exports = {
 		Object.assign(allResources, resources);
 		return this;
 	},
-	addResourceFolder(folder){
-		resourceFolders.push(folder);
-		return this;
-	},
 	call(query){
 		return executeCall(query);
 	},
@@ -114,5 +96,9 @@ module.exports = {
 	},
 	setAsync(isAsync){
 		asinc = isAsync;
+	},
+	setResourceMethod(method){
+		resourceMethod = method;
+		return this;
 	}
 }
