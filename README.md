@@ -81,3 +81,19 @@ Assume we defined to resource handlers:
         console.log(result); //{"n2" : "value"}
     });
 ```
+
+## Adding resource handlers
+There are to ways to add resources in WebQL.
+First using addResources() method, and second using "setResourceMethod".
+Assume we store our resources in "resources" folder and we want to get them using format "<fileName>.<toCall>" so we can just write:
+
+ ```javascript
+ require(webql);
+ 
+ webql.setResourceMethod((key)=>{
+    try {
+        key = key.split(.);
+        return require('./resources/'+key[0])[key[1]];
+    }
+ });
+ ```
