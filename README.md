@@ -56,7 +56,7 @@ Assume we defined to resource handlers:
 ```
  Now we can call:
  ```javascript
-    webql.call(["first", {"second" : ["\_first.key"]}]).then((result)=>{
+    webql.call(["first", {"second" : ["_first.key"]}]).then((result)=>{
         console.log(result); //{first : {key : "val"}, second : "value"}
     }); 
 ```
@@ -64,20 +64,20 @@ Assume we defined to resource handlers:
  
  If we want to call a resource only to pass it as a parameter to another resource we can use '?' modificator at the beginning of the resource name.
  ```javascript
-    webql.call(["?first", {"second" : ["\_first.key"]}]).then((result)=>{
+    webql.call(["?first", {"second" : ["_first.key"]}]).then((result)=>{
         console.log(result); //{second : "value"}
     });
 ```
  If we are interested only in one resource we don't need to get it's key so we can use "!" modificator to get rid of it and have only the resource handler result being returned
 ```javascript 
-     webql.call(["?first", {"!second" : ["\_first.key"]}]).then((result)=>{
+     webql.call(["?first", {"!second" : ["_first.key"]}]).then((result)=>{
         console.log(result); //"value"
     });
 ```
  ### Changing resource name
  If we want the result of a resource handler is assign to a different key we can do that using "resourceName>newName" syntax
  ```javascript
-    webql.call(["?first>n1", {"second>n2" : ["\n1.key"]}]).then((result)=>{
+    webql.call(["?first>n1", {"second>n2" : ["n1.key"]}]).then((result)=>{
         console.log(result); //{"n2" : "value"}
     });
 ```
@@ -95,5 +95,6 @@ Assume we store our resources in "resources" folder and we want to get them usin
         key = key.split(.);
         return require('./resources/'+key[0])[key[1]];
     }
+    catch(e){}
  });
  ```
