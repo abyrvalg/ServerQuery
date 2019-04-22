@@ -22,6 +22,9 @@ function getParams(key, obj){
 		if(typeof val == 'object') {
 			val = JSON.stringify(val);
 		}
+		else if(typeof val == 'string') {
+			val = '"'+val+'"';
+		}
 		return val;
 	}));
 }
@@ -48,7 +51,6 @@ function executeCall(query){
 				currentKey = parseKey(key);
 				try {					
 					result = promise ? promise.then((obj)=>{
-
 						return getResourceFunction(currentKey.gettterKey).apply(null, getParams(query[i][key], buffer));
 					}) : getResourceFunction(currentKey.gettterKey).apply(null, getParams(query[i][key], buffer));
 				}
