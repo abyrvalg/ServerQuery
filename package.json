@@ -1,6 +1,6 @@
 {
   "name": "webql",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "private": false,
   "browser": "./client",
   "dependencies": {}
