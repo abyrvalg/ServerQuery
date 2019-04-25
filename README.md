@@ -96,5 +96,3 @@ Assume we store our resources in "resources" folder and we want to get them usin
     catch(e){}
  });
  ```
- ## Keywords
-webQL, quaryLanguage, web, request, server, API
