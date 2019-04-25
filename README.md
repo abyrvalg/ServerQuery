@@ -1,8 +1,6 @@
 # webQL
 
 WebQL is simple library which allows us to use queries to get things on web.
-## How to install
-npm install webql --save
 
 ## How to use
 
@@ -85,7 +83,7 @@ Assume we defined to resource handlers:
 ## Adding resource handlers
 There are to ways to add resources in WebQL.
 First using addResources() method, and second using "setResourceMethod".
-Assume we store our resources in "resources" folder and we want to get them using format "<fileName>.<toCall>" so we can just write:
+Assume we store our resources in "resources" folder and we want to get them using format ```<fileName>.<toCall>``` so we can just write:
 
  ```javascript
  require(webql);
@@ -98,3 +96,5 @@ Assume we store our resources in "resources" folder and we want to get them usin
     catch(e){}
  });
  ```
+ ## Keywords
+webQL, quaryLanguage, web, request, server, API
