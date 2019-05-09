@@ -2,6 +2,7 @@ var sharedResourceMethods,
 	builtIn = require('./builtin');
 
 function getParams(key, obj){
+	!(key instanceof Array) && (key = [key]);
 	return JSON.parse(key && JSON.stringify(key).replace(/"?_([\w\.]+)"?/g, function(match, key){
 		if(key == 'this') {
 			return JSON.stringify(obj);
@@ -37,7 +38,6 @@ class WebQL{
 	constructor(){
 		this.resources = {},
 		this.resourceMethod;
-		this.context = {};
 		this.cache = {};
 	}
 	addResources(resources){
@@ -52,17 +52,12 @@ class WebQL{
 			delegated = [],
 			resourceMethod = this.resourceMethod,
 			resources = this.resources,
-			cache = this.cache,
-			context = this.context;
-			context.currentQuery = query;
-			context.cacheSettings = [];
-			context.buffer = buffer;
-			context.cache = cache;
-			context.getParams = getParams;
+			cache = this.cache,			
+			context = {};
+			context.currentQuery = query;			
 			
 		function getResourceFunction(key, params, subQuery){
 			var cacheEntryPoint = cache[key+JSON.stringify(params)];
-			
 			if(cacheEntryPoint) {
 				let result;
 				if(!cacheEntryPoint.expiration || cacheEntryPoint.expiration > (new Date()).getTime()){
@@ -109,10 +104,14 @@ class WebQL{
 					currentKey = parseKey(key);					
 					promise = promise.then((obj)=>{
 						var params = getParams(query[i][key], buffer);
+						context.cacheSettings = [];
+						context.buffer = buffer;
+						context.cache = cache;
+						context.getParams = getParams;
 						return getResourceFunction(currentKey.gettterKey, params, query[i])
 							.apply(context, params);
-					});
 
+					});
 				}
 				promise = promise.then(function(result){
 					if(currentKey.mode == "standard") {
@@ -136,7 +135,7 @@ class WebQL{
 						} else {
 							Object.assign(obj, resp)
 						}
-						Object.assign(buffer, resp)												
+						Object.assign(buffer, resp);										
 						return obj;
 					})
 				}
@@ -148,27 +147,13 @@ class WebQL{
 				handleQuery(deferred);
 			}
 			return obj;
-		});	
-		/*promise = promise.then((obj)=>{
-			if(context.cacheSettings.length){
-				let queryJson = JSON.stringify(query);
-				for(let i in context.cacheSettings){
-					let key = context.cacheSettings[i].key,
-						cacheVal = buffer[key],
-						match = queryJson.match(new RegExp('(?:(\\w+)\\>)?('+key+')"(?:\\:([^\\}]+))'));
-					match && (key = match[1] || match[2]);
-					key += JSON.stringify(getParams(JSON.parse(match[3]), buffer));
-					let exp = new Date();
-					exp.setHours(exp.getHours() + context.cacheSettings[i].timeHours)
-					cache[key] = cache[key] || {
-						val : cacheVal,
-						expiration : exp,
-						isSingleServe : context.cacheSettings[i].isSingleServe
-					}
-				}				
-			}
-			return obj;
-		});*/
+		});
+		promise.catch((e)=>{
+			typeof console !== "undefined" 
+				&& console 
+				&& console.error 
+				&& console.error(e);
+		})
 		return promise;
 	}
 	setResourceMethod(method){
