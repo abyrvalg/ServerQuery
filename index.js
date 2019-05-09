@@ -114,6 +114,10 @@ class WebQL{
 					});
 				}
 				promise = promise.then(function(result){
+					if(result == '__defer__'){
+						deferred.push(query[i]);
+						return obj;
+					}
 					if(currentKey.mode == "standard") {
 						obj[currentKey.settterKey] = result; 						
 					}

@@ -5,7 +5,10 @@ module.exports = {
 		for(let i in arguments){
 			let key = arguments[i][0],
 				cacheVal = this.buffer[key],
-				match = queryJson.match(new RegExp('(?:(\\w+)\\>)?('+key+')"(?:\\:([^\\}]+))'));			
+				match = queryJson.match(new RegExp('(?:(\\w+)\\>)?('+key+')"(?:\\:([^\\}]+))'));
+			if(!cacheVal){
+				return '__defer__';
+			}
 			match && (key = match[1] || match[2]);
 			key += JSON.stringify(this.getParams(JSON.parse(match[3]), this.buffer));
 			let exp = new Date();
