@@ -27,7 +27,7 @@ module.exports = {
 	writeToCache(obj){
 		Object.assign(this.cache, obj);
 	},
-	aggregate(obj){
+	aggr(obj){
 		return obj;
 	}
 }

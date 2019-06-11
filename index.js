@@ -35,10 +35,12 @@ function parseKey(key){
 }
 
 class WebQL{
-	constructor(){
-		this.resources = {},
-		this.resourceMethod;
+	constructor(options){
+		options = options || {};
+		this.resources = options.resources || {};
+		this.resourceMethod = options.resourceMethod;
 		this.cache = {};
+		this.delegatedBuiltin = options.delegatedBuiltin || [];
 	}
 	addResources(resources){
 		Object.assign(this.resources, resources);
@@ -52,9 +54,10 @@ class WebQL{
 			delegated = [],
 			resourceMethod = this.resourceMethod,
 			resources = this.resources,
-			cache = this.cache,			
+			cache = this.cache,
+			delegatedBuiltin = this.delegatedBuiltin,
 			context = {};
-			context.currentQuery = query;			
+		context.currentQuery = query;			
 			
 		function getResourceFunction(key, params, subQuery){
 			var cacheEntryPoint = cache[key+JSON.stringify(params)];
@@ -79,7 +82,7 @@ class WebQL{
 						subQuery[key] = params;
 					}
 				}
-				if(key[0] != '@') { 
+				if(key[0] != '@' || ~delegatedBuiltin.indexOf(key.substr(1))) { 
 					delegated.push(subQuery);
 					return ()=>null;
 				}
