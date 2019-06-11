@@ -116,7 +116,7 @@ If we are interested only in one resource, we don't need to get its key. So we c
  ### Changing resource name
  If we want the result of a resource handler to be assign to a different key we can do that using "resourceName>newName" syntax
  ```javascript
-    webql.call(["?first>n1", {"second>n2" : ["n1.key"]}]).then((result)=>{
+    webql.call(["?first>n1", {"second>n2" : ["_n1.key"]}]).then((result)=>{
         console.log(result); //{"n2" : "value"}
     });
 ```
@@ -137,7 +137,7 @@ built-in methods help use with post-processing results of our queries. For now t
 ### cache(\[\<Resource Name\>, \<Time in hours\>, \<is single served\>], ...) \: Cached keys
 Cache method is used when we want to remember the resoult of some resource:
  ```javascript
-    webql.call(["first>n1", {"second>n2" : ["n1.key"]}, 
+    webql.call(["first>n1", {"second>n2" : ["_n1.key"]}, 
         {
             "?@cache" : [["n1", 2, false], ["n2", 3, true]]
         }
@@ -148,7 +148,7 @@ Cache method is used when we want to remember the resoult of some resource:
 ### aggregate("\<object to return\>") \: Result
 Agregate method is used to change the "view" of the result
  ```javascript
- webql.call(["first", {"second" : ["n1.key"]}, 
+ webql.call(["first", {"second" : ["_n1.key"]}, 
     {"!@aggregate" : {
         "obj" : {
             "n1" : "_first",
