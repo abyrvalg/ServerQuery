@@ -145,11 +145,11 @@ Cache method is used when we want to remember the resoult of some resource:
         console.log(result); //The results of "first" result will be cached for 2 hours. The result of "second" resource will be cached for 3 hours. Also resource "second" will be removed after first time we get it from cahce.
     });
  ```
-### aggregate("\<object to return\>") \: Result
+### aggr("\<object to return\>") \: Result
 Agregate method is used to change the "view" of the result
  ```javascript
  webql.call(["first", {"second" : ["_n1.key"]}, 
-    {"!@aggregate" : {
+    {"!@aggr" : {
         "obj" : {
             "n1" : "_first",
             "n2" : "_second"
@@ -160,4 +160,12 @@ Agregate method is used to change the "view" of the result
     console.log(result); //{obj : {n1 : {key : "val"}, n2 : "value"}, arr : [{key : "val"}, "value"]}
 });
 ```
- 
+ ## Constructor parameter
+ WebQL constructor takes one parameter - "options"
+  ```javascript
+const webql = new (require('webql'))({
+    resources : <object of resources we want to define on initialization>
+    resourceMethod : <Function which returns resources based on query>
+    delegatedBuiltin : <Array of strings, represents build in methods we want to delegate>
+});
+  ```
