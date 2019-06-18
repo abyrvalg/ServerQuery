@@ -2,6 +2,8 @@
 
 WebQL is a environment agnostic library which allows to get data from mulitple resources using queries. It also can be used as a server API.
 
+Source: https://github.com/abyrvalg/webql
+
 ## How to use
 ### Use case 1. Single environment
 Adding resources:
@@ -169,3 +171,4 @@ const webql = new (require('webql'))({
     delegatedBuiltin : <Array of strings, represents build in methods we want to delegate>
 });
   ```
+  
