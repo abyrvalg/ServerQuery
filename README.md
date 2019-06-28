@@ -1,15 +1,15 @@
-# webQL
+# liteQL
 
-WebQL is a environment agnostic library which allows to get data from mulitple resources using queries. It also can be used as a server API.
+LiteQL is a environment agnostic library which allows to get data from mulitple resources using queries. It also can be used as a server API.
 
-Source: https://github.com/abyrvalg/webql
+Source: https://github.com/abyrvalg/liteql
 
 ## How to use
 ### Use case 1. Single environment
 Adding resources:
 ```javascript
-    const webql = new (require('webql'))();
-    webql.addResources({
+    const liteql = new (require('liteql'))();
+    liteql.addResources({
         test(){
             return "Test resource"
         },
@@ -20,7 +20,7 @@ Adding resources:
 ```
 Getting resource by query:
 ```javascript
-    webql.call(["test", {"testWithParam" : ["myParam"]}]).then((result)=>{
+    liteql.call(["test", {"testWithParam" : ["myParam"]}]).then((result)=>{
         console.log(result); //{test: "Test resource", testWithParam : "your param is myParam"}
     });
 ```
@@ -28,9 +28,9 @@ Getting resource by query:
 Server:
 ```javascript
     const express = require('express');
-    const webql = new (require('webql'))();
+    const liteql = new (require('liteql'))();
     var app = express();    
-    webql.addResources({
+    liteql.addResources({
         test(){
             return "Test resource"
         },
@@ -40,7 +40,7 @@ Server:
     });
     app.all('/data', function(req, resp){
         var query = JSON.parse(req.query.query),
-			promise = webql.call(query);
+			promise = liteql.call(query);
         promise.then((result)=>{
             resp.send(result)
         })
@@ -48,8 +48,8 @@ Server:
 ```
 Client:
 ```javascript
-    const webql = new (require('webql'))();
-    webql.addResources({
+    const liteql = new (require('liteql'))();
+    liteql.addResources({
         __delegate__(query){
             return new Promise((resolver)=>{
                 var xmlHttpRequest = new XMLHttpRequest();
@@ -62,30 +62,30 @@ Client:
         }
     });
     
-    webql.call(["test", {"testWithParam" : ["myParam"]}]).then((result)=>{
+    liteql.call(["test", {"testWithParam" : ["myParam"]}]).then((result)=>{
         console.log(result); //{test: "Test resource", testWithParam : "your param is myParam"}
     });
 ```
 
-## webQL query syntax
+## LiteQL query syntax
 ### Overview
-WebQL query can be defined as an array or an object. It is required to define it as an array in case if resources depend on each other and order of resolving them matters, otherwise it ok to use objets. Each element of this array/object represents a resource. If we don't want to pass any parameters to the resource handler we define it as a string.
+LiteQL query can be defined as an array or an object. It is required to define it as an array in case if resources depend on each other and order of resolving them matters, otherwise it ok to use objets. Each element of this array/object represents a resource. If we don't want to pass any parameters to the resource handler we define it as a string.
 ```javascript
-    webql.call(["resourceName"]);
+    liteql.call(["resourceName"]);
 ```
 When we want to pass any parameters to resource handlers, we define an object with one property where the key is the resource name and value is an array of parameters.
 ```javascript
-    webql.call({"resourceName": ["paramter1", "parameter2"]});
+    liteql.call({"resourceName": ["paramter1", "parameter2"]});
 ```
 Parameters that we pass to a resource handler do not have to be strings or even primitives.
 ```javascript
-    webql.call({"resourceName" : ["string", 1, true, {"key": "value"}, ["a", "r", "r", "a", "y"]]});
+    liteql.call({"resourceName" : ["string", 1, true, {"key": "value"}, ["a", "r", "r", "a", "y"]]});
 ```
 ### Using results of previous resource handlers as parameters for futher ones
 If we want a resource handler to use the result of other one, we can do that using "\_" at the beginning of parameter key.
 Assume we defined two resource handlers:
 ```javascript
-    webql.addResources({
+    liteql.addResources({
         first(){
             return {"key" : "val"}
         },
@@ -97,7 +97,7 @@ Assume we defined two resource handlers:
 ```
  Now we can call:
  ```javascript
-    webql.call(["first", {"second" : ["_first.key"]}]).then((result)=>{
+    liteql.call(["first", {"second" : ["_first.key"]}]).then((result)=>{
         console.log(result); //{first : {key : "val"}, second : "value"}
     }); 
 ```
@@ -105,31 +105,31 @@ Assume we defined two resource handlers:
  
  If we want to call a resource only to pass it as a parameter to another resource we can use '?' modificator at the beginning of the resource name.
  ```javascript
-    webql.call(["?first", {"second" : ["_first.key"]}]).then((result)=>{
+    liteql.call(["?first", {"second" : ["_first.key"]}]).then((result)=>{
         console.log(result); //{second : "value"}
     });
 ```
 If we are interested only in one resource, we don't need to get its key. So we can use "!" modificator to get rid of it and have only the resource handler result being returned.
 ```javascript 
-     webql.call(["?first", {"!second" : ["_first.key"]}]).then((result)=>{
+     liteql.call(["?first", {"!second" : ["_first.key"]}]).then((result)=>{
         console.log(result); //"value"
     });
 ```
  ### Changing resource name
  If we want the result of a resource handler to be assign to a different key we can do that using "resourceName>newName" syntax
  ```javascript
-    webql.call(["?first>n1", {"second>n2" : ["_n1.key"]}]).then((result)=>{
+    liteql.call(["?first>n1", {"second>n2" : ["_n1.key"]}]).then((result)=>{
         console.log(result); //{"n2" : "value"}
     });
 ```
 
 ## Adding resource handlers
-There are to ways to add resources in WebQL.
+There are to ways to add resources in LiteQL.
 First using addResources() method, and second using "setResourceMethod".
 Assume we store our resources in "resources" folder and we want to get them using format ```<fileName>.<methodToCall>``` so we can just write:
 
  ```javascript
- webql.setResourceMethod((key)=>{
+ liteql.setResourceMethod((key)=>{
     key = key.split(.);
     return require('./resources/'+key[0])[key[1]];
  });
@@ -139,7 +139,7 @@ built-in methods help use with post-processing results of our queries. For now t
 ### cache(\[\<Resource Name\>, \<Time in hours\>, \<is single served\>], ...) \: Cached keys
 Cache method is used when we want to remember the resoult of some resource:
  ```javascript
-    webql.call(["first>n1", {"second>n2" : ["_n1.key"]}, 
+    liteql.call(["first>n1", {"second>n2" : ["_n1.key"]}, 
         {
             "?@cache" : [["n1", 2, false], ["n2", 3, true]]
         }
@@ -150,7 +150,7 @@ Cache method is used when we want to remember the resoult of some resource:
 ### aggr("\<object to return\>") \: Result
 Agregate method is used to change the "view" of the result
  ```javascript
- webql.call(["first", {"second" : ["_n1.key"]}, 
+ liteql.call(["first", {"second" : ["_n1.key"]}, 
     {"!@aggr" : {
         "obj" : {
             "n1" : "_first",
@@ -163,9 +163,9 @@ Agregate method is used to change the "view" of the result
 });
 ```
  ## Constructor parameter
- WebQL constructor takes one parameter - "options"
+ LiteQL constructor takes one parameter - "options"
   ```javascript
-const webql = new (require('webql'))({
+const liteql = new (require('liteql'))({
     resources : <object of resources we want to define on initialization>
     resourceMethod : <Function which returns resources based on query>
     delegatedBuiltin : <Array of strings, represents build in methods we want to delegate>
