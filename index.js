@@ -41,6 +41,7 @@ class WebQL{
 		this.resourceMethod = options.resourceMethod;
 		this.cache = {};
 		this.delegatedBuiltin = options.delegatedBuiltin || [];
+		this.scope = {};
 	}
 	addResources(resources){
 		Object.assign(this.resources, resources);
@@ -56,6 +57,7 @@ class WebQL{
 			resources = this.resources,
 			cache = this.cache,
 			delegatedBuiltin = this.delegatedBuiltin,
+			scope = this.scope,
 			context = {};
 		context.currentQuery = query;			
 			
@@ -111,6 +113,7 @@ class WebQL{
 						context.buffer = buffer;
 						context.cache = cache;
 						context.getParams = getParams;
+						context.scope = scope;
 						return getResourceFunction(currentKey.gettterKey, params, query[i])
 							.apply(context, params);
 

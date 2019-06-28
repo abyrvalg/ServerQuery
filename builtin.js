@@ -29,5 +29,11 @@ module.exports = {
 	},
 	aggr(obj){
 		return obj;
+	},
+	set(key, val){
+		this.scope[key] = val;
+	},
+	get(key) {
+		return this.scope[key];
 	}
 }
