@@ -162,7 +162,8 @@ Agregate method is used to change the "view" of the result
     console.log(result); //{obj : {n1 : {key : "val"}, n2 : "value"}, arr : [{key : "val"}, "value"]}
 });
 ```
- ## Constructor parameter
+
+## Constructor parameter
  LiteQL constructor takes one parameter - "options"
   ```javascript
 const liteql = new (require('liteql'))({
