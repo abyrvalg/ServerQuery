@@ -34,7 +34,7 @@ function parseKey(key){
 	}
 }
 
-class WebQL{
+class LiteQL{
 	constructor(options){
 		options = options || {};
 		this.resources = options.resources || {};
@@ -174,4 +174,4 @@ class WebQL{
 		sharedResourceMethods = method;
 	}
 }
-module.exports = WebQL;
+module.exports = LiteQL;
