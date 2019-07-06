@@ -35,5 +35,22 @@ module.exports = {
 	},
 	get(key) {
 		return this.scope[key];
+	},
+	map(items, methodName, field) {
+		var obj = this.obj;				
+		return new Promise((resolve, reject)=>{			
+			for(let key in items){
+				this.promise.then((obj)=>{
+					method = this.getResourceFunction(methodName, [items[key]], [methodName]);
+					return method.apply(this, [items[key]]);				
+				}).then((r)=>{	
+					items[key] = r;
+					return r;
+				});
+			}
+			this.promise.then(()=>{
+				resolve(items);
+			})	
+		})		
 	}
 }

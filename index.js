@@ -59,9 +59,11 @@ class LiteQL{
 			delegatedBuiltin = this.delegatedBuiltin,
 			scope = this.scope,
 			context = {};
-		context.currentQuery = query;			
-			
-		function getResourceFunction(key, params, subQuery){
+		context.currentQuery = query;	
+		context.promise = promise;
+		context.handleQuery = handleQuery;	
+		context.getResourceFunction = getResourceFunction;
+		function getResourceFunction(key, params, subQuery){			
 			var cacheEntryPoint = cache[key+JSON.stringify(params)];
 			if(cacheEntryPoint) {
 				let result;
@@ -75,27 +77,26 @@ class LiteQL{
 				if(result) {
 					return ()=>result;
 				}
-			}
-						
-			var method = resources[key] || (resourceMethod ? resourceMethod(key) : (sharedResourceMethods && sharedResourceMethods(key)));
-			if(!method) {
+			}				
+			var method = resources[key] || (resourceMethod ? resourceMethod(key) : (sharedResourceMethods && sharedResourceMethods(key)));			
+			if(!method) {				
 				if(params && !~JSON.stringify(params).indexOf('__failed__')) {
 					for(let key in subQuery){
 						subQuery[key] = params;
 					}
-				}
-				if(key[0] != '@' || ~delegatedBuiltin.indexOf(key.substr(1))) { 
+				}			
+				if(key[0] != '@' || ~delegatedBuiltin.indexOf(key.substr(1))) {					
 					delegated.push(subQuery);
 					return ()=>null;
 				}
-			}
+			}			
 			if(~JSON.stringify(params).indexOf('__failed__')){
 				deferred.push(subQuery);
 				return ()=>null;
-			}
-			if(key[0] == '@') {
+			}			
+			if(key[0] == '@') {		
 				return builtIn[key.substr(1)];
-			}
+			}			
 			return method;
 		}
 		!(query instanceof Array) && (query = [query]);
@@ -106,14 +107,14 @@ class LiteQL{
 					query[i] = {[query[i]] : null}
 				}
 				for(let key in query[i]){
-					currentKey = parseKey(key);					
+					currentKey = parseKey(key);						
 					promise = promise.then((obj)=>{
 						var params = getParams(query[i][key], buffer);
 						context.cacheSettings = [];
 						context.buffer = buffer;
 						context.cache = cache;
 						context.getParams = getParams;
-						context.scope = scope;
+						context.scope = scope;			
 						return getResourceFunction(currentKey.gettterKey, params, query[i])
 							.apply(context, params);
 
@@ -131,40 +132,46 @@ class LiteQL{
 						obj = result;
 					}
 					buffer[currentKey.settterKey] = result;
+							
 					return obj
 				});
 			}
+			return promise;
 		}
 		handleQuery(query);
 		if(resources.__delegate__){
 			promise = promise.then((obj)=>{
 				if(delegated.length) {
-					return resources.__delegate__(delegated).then((resp)=>{
+					return resources.__delegate__(delegated).then((resp)=>{						
 						if(~JSON.stringify(delegated).indexOf('!')){
 							obj = resp;
 						} else {
 							Object.assign(obj, resp)
 						}
-						Object.assign(buffer, resp);										
+						Object.assign(buffer, resp);						
 						return obj;
 					})
 				}
 				else {return obj}
 			})
 		}
-		promise = promise.then((obj)=>{
-			if(deferred.length) {
-				handleQuery(deferred);
-			}
-			return obj;
+		
+		return new Promise((resolve, reject)=>{
+			promise.then((obj)=>{
+				if(deferred.length) {
+					handleQuery(deferred).then(obj=>resolve(obj))				
+				}
+				else {
+					resolve(obj)
+				}
+			}).catch((e)=>{
+				typeof console !== "undefined" 
+					&& console 
+					&& console.error 
+					&& console.error(e);
+				reject(e);
+			});
 		});
-		promise.catch((e)=>{
-			typeof console !== "undefined" 
-				&& console 
-				&& console.error 
-				&& console.error(e);
-		})
-		return promise;
 	}
 	setResourceMethod(method){
 		resourceMethod = method;
