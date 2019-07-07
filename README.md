@@ -101,7 +101,7 @@ Assume we defined two resource handlers:
         console.log(result); //{first : {key : "val"}, second : "value"}
     }); 
 ```
- ### Dominant and buffer modificators
+### Dominant and buffer modificators
  
  If we want to call a resource only to pass it as a parameter to another resource we can use '?' modificator at the beginning of the resource name.
  ```javascript
@@ -115,7 +115,36 @@ If we are interested only in one resource, we don't need to get its key. So we c
         console.log(result); //"value"
     });
 ```
- ### Changing resource name
+### Force delegating
+If we want a method to be delegated regardless if it is available on the current instance, we define "\~" in the prefix. It make sense to do so for the "aggr" built-in method to decrease response size.
+ ```javascript
+    var inst1 = new LiteQL(),
+        inst2 = new LiteQL();
+	
+    inst2.addResources({
+        __delegate__(query){
+            return inst1.call(query)
+        },
+        foo(){
+            return "inst2"
+        }
+    }); 
+    
+    inst1.addResources({
+        foo(){
+            return "inst1"
+        }
+    });
+    inst1.call(['foo']).then((result)=>{
+        console.log(result); //inst1
+    });
+    
+    inst1.call(['~foo']).then((result)=>{
+        console.log(result); //inst2
+    })
+```
+
+### Changing resource name
  If we want the result of a resource handler to be assign to a different key we can do that using "resourceName>newName" syntax
  ```javascript
     liteql.call(["?first>n1", {"second>n2" : ["_n1.key"]}]).then((result)=>{
@@ -147,7 +176,7 @@ Cache method is used when we want to remember the resoult of some resource:
         console.log(result); //The results of "first" result will be cached for 2 hours. The result of "second" resource will be cached for 3 hours. Also resource "second" will be removed after first time we get it from cahce.
     });
  ```
-### aggr("\<object to return\>") \: Result
+### aggr("\<object to return\>") \: Object
 Agregate method is used to change the "view" of the result
  ```javascript
  liteql.call(["first", {"second" : ["_n1.key"]}, 
@@ -161,6 +190,25 @@ Agregate method is used to change the "view" of the result
 }]).then((result)=>{
     console.log(result); //{obj : {n1 : {key : "val"}, n2 : "value"}, arr : [{key : "val"}, "value"]}
 });
+```
+### map(array, method) \: Array
+Aplies "method" to each item in the "array" parameter.
+```javascript
+    liteql.addResources({
+        array(){
+            return [{a : 1}, {a : 2}, {a : 3}] 
+        },
+        incrementA(item){
+	    item.a++	
+       	    return return item
+        }
+    });
+    liteql.call(['array', 
+	{'@map>mapped' : ['_array', 'each']}, 
+	{'@!aggr' : '_mapped'}
+     ]).then((r)=>{
+	return JSON.stringify(r) == '[{"a":2},{"a":3},{"a":4}]';
+    });
 ```
 
 ## Constructor parameter
