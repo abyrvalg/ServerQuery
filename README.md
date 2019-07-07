@@ -200,7 +200,7 @@ Aplies "method" to each item in the "array" parameter.
         },
         incrementA(item){
 	    item.a++	
-       	    return return item
+       	    return item
         }
     });
     liteql.call(['array', 
