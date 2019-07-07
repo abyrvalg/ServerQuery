@@ -1,6 +1,6 @@
-const WQ = require('./index'),
-	inst1 = new WQ(),
-	inst2 = new WQ();
+const LQ = require('./index'),
+	inst1 = new LQ(),
+	inst2 = new LQ();
 
 var tests = [
 	()=>{
@@ -68,7 +68,8 @@ var tests = [
 			array(){
 				return [{a : 1}, {a : 2}, {a : 3}] 
 		}});
-			inst1.addResources({each(item) {
+			inst1.addResources({
+				each(item) {
 				item.a ++;
 				return item;
 			}
