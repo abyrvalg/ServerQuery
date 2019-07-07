@@ -1,3 +1,4 @@
+const tools = require('./tools');
 module.exports = {
 	cache(){
 		var queryJson = JSON.stringify(this.currentQuery),
@@ -10,7 +11,7 @@ module.exports = {
 				return '__defer__';
 			}
 			match && (key = match[1] || match[2]);
-			key += JSON.stringify(this.getParams(JSON.parse(match[3]), this.buffer));
+			key += JSON.stringify(tools.getParams(JSON.parse(match[3]), this.buffer));
 			let exp = new Date();
 			exp.setHours(exp.getHours() + arguments[i][1]);		
 			if(!this.cache[key]){
@@ -37,13 +38,13 @@ module.exports = {
 		return this.scope[key];
 	},
 	map(items, methodName, field) {
-		var obj = this.obj;				
+		var obj = this.obj;
 		return new Promise((resolve, reject)=>{			
 			for(let key in items){
 				this.promise.then((obj)=>{
-					method = this.getResourceFunction(methodName, [items[key]], [methodName]);
+					method = this.getResourceFunction(tools.parseKey(methodName), [items[key]], [methodName]); //TODO: add key parsing
 					return method.apply(this, [items[key]]);				
-				}).then((r)=>{	
+				}).then((r)=>{
 					items[key] = r;
 					return r;
 				});

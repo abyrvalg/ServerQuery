@@ -1,39 +1,7 @@
-var sharedResourceMethods,
-	builtIn = require('./builtin');
+const builtIn = require('./builtin'),
+	tools = require('./tools');
 
-function getParams(key, obj){
-	!(key instanceof Array) && (key = [key]);
-	return JSON.parse(key && JSON.stringify(key).replace(/"?_([\w\.]+)"?/g, function(match, key){
-		if(key == 'this') {
-			return JSON.stringify(obj);
-		}
-		let path = key.split('.'),
-			val = obj;
-		for(let i = 0; i < path.length; i++){
-			if(!val) {
-				break;
-			}
-			val = val[path[i]];
-		}
-		val = val || '__failed__';
-		if(typeof val == 'object') {
-			val = JSON.stringify(val);
-		}
-		else if(typeof val == 'string') {
-			val = '"'+val+'"';
-		}
-		return val;
-	}));
-}
-function parseKey(key){
-	var match = key.match(/^([\?\!]+)?([\@\w]+)(?:\>(\w+))?/);
-	return {
-		gettterKey : match[2],
-		mode : {'?' : 'buffer', '!' : 'dominant'}[match[1]] || 'standard',
-		settterKey : match[3] || match[2]
-	}
-}
-
+var sharedResourceMethods;
 class LiteQL{
 	constructor(options){
 		options = options || {};
@@ -63,8 +31,9 @@ class LiteQL{
 		context.promise = promise;
 		context.handleQuery = handleQuery;	
 		context.getResourceFunction = getResourceFunction;
-		function getResourceFunction(key, params, subQuery){			
-			var cacheEntryPoint = cache[key+JSON.stringify(params)];
+		function getResourceFunction(queryMethod, params, subQuery){	
+			var key = queryMethod.getterKey,
+				cacheEntryPoint = cache[key+JSON.stringify(params)];
 			if(cacheEntryPoint) {
 				let result;
 				if(!cacheEntryPoint.expiration || cacheEntryPoint.expiration > (new Date()).getTime()){
@@ -77,25 +46,24 @@ class LiteQL{
 				if(result) {
 					return ()=>result;
 				}
-			}				
+			}
 			var method = resources[key] || (resourceMethod ? resourceMethod(key) : (sharedResourceMethods && sharedResourceMethods(key)));			
-			if(!method) {				
+			if((!method && (~delegatedBuiltin.indexOf(key) || !queryMethod.builtIn)) || queryMethod.delegated) {
 				if(params && !~JSON.stringify(params).indexOf('__failed__')) {
 					for(let key in subQuery){
 						subQuery[key] = params;
 					}
-				}			
-				if(key[0] != '@' || ~delegatedBuiltin.indexOf(key.substr(1))) {					
-					delegated.push(subQuery);
-					return ()=>null;
 				}
-			}			
+				delegated.push(subQuery);
+				return ()=>null;
+			}
+
 			if(~JSON.stringify(params).indexOf('__failed__')){
 				deferred.push(subQuery);
 				return ()=>null;
 			}			
-			if(key[0] == '@') {		
-				return builtIn[key.substr(1)];
+			if(queryMethod.builtIn) {
+				return builtIn[key];
 			}			
 			return method;
 		}
@@ -107,15 +75,14 @@ class LiteQL{
 					query[i] = {[query[i]] : null}
 				}
 				for(let key in query[i]){
-					currentKey = parseKey(key);						
+					currentKey = tools.parseKey(key);						
 					promise = promise.then((obj)=>{
-						var params = getParams(query[i][key], buffer);
+						var params = tools.getParams(query[i][key], buffer);
 						context.cacheSettings = [];
 						context.buffer = buffer;
 						context.cache = cache;
-						context.getParams = getParams;
 						context.scope = scope;			
-						return getResourceFunction(currentKey.gettterKey, params, query[i])
+						return getResourceFunction(currentKey, params, query[i])
 							.apply(context, params);
 
 					});
@@ -142,7 +109,8 @@ class LiteQL{
 		if(resources.__delegate__){
 			promise = promise.then((obj)=>{
 				if(delegated.length) {
-					return resources.__delegate__(delegated).then((resp)=>{						
+					delegated = JSON.parse(JSON.stringify(delegated).replace(/~/g, ''));
+					return resources.__delegate__(delegated).then((resp)=>{
 						if(~JSON.stringify(delegated).indexOf('!')){
 							obj = resp;
 						} else {

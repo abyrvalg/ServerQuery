@@ -59,7 +59,7 @@ var tests = [
 		});
 	},
 	()=>{
-		inst2.addResources({
+		inst2.addResources({ //test 5
 			__delegate__(query){
 				return inst1.call(query)
 			}
@@ -68,21 +68,19 @@ var tests = [
 			array(){
 				return [{a : 1}, {a : 2}, {a : 3}] 
 		}});
-			inst2.addResources({each(item) {
+			inst1.addResources({each(item) {
 				item.a ++;
 				return item;
 			}
 		});
 		return inst2.call(['array', 
-			{'@map>mapped' : ['_array', 'each']}, 
-			{'!@aggr' : '_mapped'}]).then((r)=>{
-				console.log(r);
+			{'@~map>mapped' : ['_array', 'each']}, 
+			{'@!~aggr' : '_mapped'}]).then((r)=>{
 			return JSON.stringify(r) == '[{"a":2},{"a":3},{"a":4}]';
 		});
 	}
 ];
 
-	tests = [tests[5]]
 	for(let i in tests){
 		tests[i]().then((r)=>{
 			console.log('test '+i+':'+(r ? 'ok' : 'fail'));
