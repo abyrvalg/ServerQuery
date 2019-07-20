@@ -79,6 +79,16 @@ var tests = [
 			{'@!~aggr' : '_mapped'}]).then((r)=>{
 			return JSON.stringify(r) == '[{"a":2},{"a":3},{"a":4}]';
 		});
+	},
+	()=>{
+		return inst1.call(['array', {'!@sort' : ['_array', 'a', true]}]).then((r)=>{
+			return JSON.stringify(r) == '[{"a":3},{"a":2},{"a":1}]';
+		});
+	},
+	()=>{
+		return inst1.call(['array', {'!@frame' : ['_array', 1, 1]}]).then((r)=>{
+			return JSON.stringify(r) == '[{"a":2}]';
+		})
 	}
 ];
 

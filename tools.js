@@ -1,3 +1,15 @@
+function lookDeep(key, obj){
+	let path = key.split('.'),
+		val = obj;
+	for(let i = 0; i < path.length; i++){
+		if(!val) {
+			break;
+		}
+		val = val[path[i]];
+	}
+	return val;
+}
+
 module.exports = {
 	getParams(key, obj){
 		!(key instanceof Array) && (key = [key]);
@@ -5,15 +17,7 @@ module.exports = {
 			if(key == 'this') {
 				return JSON.stringify(obj);
 			}
-			let path = key.split('.'),
-				val = obj;
-			for(let i = 0; i < path.length; i++){
-				if(!val) {
-					break;
-				}
-				val = val[path[i]];
-			}
-			val = val || '__failed__';
+			val = lookDeep(key, obj) || '__failed__';
 			if(typeof val == 'object') {
 				val = JSON.stringify(val);
 			}
@@ -23,6 +27,7 @@ module.exports = {
 			return val;
 		}));
 	},
+	lookDeep : lookDeep,
 	parseKey(key){
 		var match = key.match(/^([\?\!\~\@]+)?([\w]+)(?:\>(\w+))?/);
 		return {

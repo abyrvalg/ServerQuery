@@ -53,5 +53,19 @@ module.exports = {
 				resolve(items);
 			})	
 		})		
+	},
+	sort(items, key, desc){
+		items && items.sort && items.sort((a, b)=>{			
+			if(key) {
+				a = tools.lookDeep(key, a);
+				b = tools.lookDeep(key, b);
+				if(!a || !b) return;
+			}
+			return desc ? (a < b ? 1 : -1) : (a > b ? 1 : -1);
+		});
+		return items;
+	},
+	frame(items, offset, limit){
+		return items.slice(offset, offset+limit)
 	}
 }
