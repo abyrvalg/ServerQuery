@@ -200,17 +200,40 @@ Aplies "method" to each item in the "array" parameter.
         },
         incrementA(item){
 	    item.a++	
-       	    return return item
+       	    return item
         }
     });
     liteql.call(['array', 
 	{'@map>mapped' : ['_array', 'each']}, 
 	{'@!aggr' : '_mapped'}
      ]).then((r)=>{
-	return JSON.stringify(r) == '[{"a":2},{"a":3},{"a":4}]';
+	console.log(r); //'[{"a":2},{"a":3},{"a":4}]';
     });
 ```
-
+### sort(array, key, desc)
+Sorts "array" by "key". By default order is ascending if "desc" is true, the order is descending
+```javascript
+    liteql.addResources({
+        array(){
+            return [{a : 1}, {a : 2}, {a : 3}] 
+        },
+    });
+    iteql.call(['array', {'!@sort' : ['_array', 'a', true]}]).then((r)=>{
+        return console.log(r); //'[{"a":3},{"a":2},{"a":1}]';
+    });
+```
+### frame(array, offset, limit)
+Removes from "array" "offest" items from the begging and leaves only "limit" items in the array
+```javascript
+    liteql.addResources({
+        array(){
+            return [{a : 1}, {a : 2}, {a : 3}] 
+        },
+    });
+    iteql.call(['array', {'!@frame' : ['_array', 1, 1]}]).then((r)=>{
+        return console.log(r); //'[{"a":2}]';
+    });
+```
 ## Constructor parameter
  LiteQL constructor takes one parameter - "options"
   ```javascript
