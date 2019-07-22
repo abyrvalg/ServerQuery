@@ -1,6 +1,6 @@
 # liteQL
 
-LiteQL is a environment agnostic library which allows to get data from mulitple resources using queries. It also can be used as a server API.
+LiteQL is a environment agnostic library which allows to get data from multiple resources using queries. It also can be used as a server API.
 
 Source: https://github.com/abyrvalg/liteql
 
@@ -40,7 +40,7 @@ Server:
     });
     app.all('/data', function(req, resp){
         var query = JSON.parse(req.query.query),
-			promise = liteql.call(query);
+        promise = liteql.call(query);
         promise.then((result)=>{
             resp.send(result)
         })
@@ -81,7 +81,7 @@ Parameters that we pass to a resource handler do not have to be strings or even 
 ```javascript
     liteql.call({"resourceName" : ["string", 1, true, {"key": "value"}, ["a", "r", "r", "a", "y"]]});
 ```
-### Using results of previous resource handlers as parameters for futher ones
+### Using results of previous resource handlers as parameters for further ones
 If we want a resource handler to use the result of other one, we can do that using "\_" at the beginning of parameter key.
 Assume we defined two resource handlers:
 ```javascript
@@ -101,15 +101,15 @@ Assume we defined two resource handlers:
         console.log(result); //{first : {key : "val"}, second : "value"}
     }); 
 ```
-### Dominant and buffer modificators
+### Dominant and buffer marker
  
- If we want to call a resource only to pass it as a parameter to another resource we can use '?' modificator at the beginning of the resource name.
+ If we want to call a resource only to pass it as a parameter to another resource we can use '?' marker at the beginning of the resource name.
  ```javascript
     liteql.call(["?first", {"second" : ["_first.key"]}]).then((result)=>{
         console.log(result); //{second : "value"}
     });
 ```
-If we are interested only in one resource, we don't need to get its key. So we can use "!" modificator to get rid of it and have only the resource handler result being returned.
+If we are interested only in one resource, we don't need to get its key. So we can use "!"  marker to get rid of it and have only the resource handler result being returned.
 ```javascript 
      liteql.call(["?first", {"!second" : ["_first.key"]}]).then((result)=>{
         console.log(result); //"value"
@@ -120,7 +120,7 @@ If we want a method to be delegated regardless if it is available on the current
  ```javascript
     var inst1 = new LiteQL(),
         inst2 = new LiteQL();
-	
+
     inst2.addResources({
         __delegate__(query){
             return inst1.call(query)
@@ -164,7 +164,7 @@ Assume we store our resources in "resources" folder and we want to get them usin
  });
  ```
 ## Built-in methods
-built-in methods help use with post-processing results of our queries. For now two methots are availble. To call a built-in method we define '@' before its name. '@' should be define after modificator.
+built-in methods help use with post-processing results of our queries. For now two methods are available. To call a built-in method we define '@' before its name.
 ### cache(\[\<Resource Name\>, \<Time in hours\>, \<is single served\>], ...) \: Cached keys
 Cache method is used when we want to remember the resoult of some resource:
  ```javascript
@@ -173,7 +173,7 @@ Cache method is used when we want to remember the resoult of some resource:
             "?@cache" : [["n1", 2, false], ["n2", 3, true]]
         }
     ]).then((result)=>{
-        console.log(result); //The results of "first" result will be cached for 2 hours. The result of "second" resource will be cached for 3 hours. Also resource "second" will be removed after first time we get it from cahce.
+        console.log(result); //The results of "first" result will be cached for 2 hours. The result of "second" resource will be cached for 3 hours. Also resource "second" will be removed after first time we get it from cache.
     });
  ```
 ### aggr("\<object to return\>") \: Object
@@ -192,22 +192,22 @@ Agregate method is used to change the "view" of the result
 });
 ```
 ### map(array, method) \: Array
-Aplies "method" to each item in the "array" parameter.
+Applies "method" to each item in the "array" parameter.
 ```javascript
     liteql.addResources({
         array(){
             return [{a : 1}, {a : 2}, {a : 3}] 
         },
         incrementA(item){
-	    item.a++	
-       	    return item
+           item.a++	
+       	   return item
         }
     });
     liteql.call(['array', 
-	{'@map>mapped' : ['_array', 'each']}, 
-	{'@!aggr' : '_mapped'}
-     ]).then((r)=>{
-	console.log(r); //'[{"a":2},{"a":3},{"a":4}]';
+        {'@map>mapped' : ['_array', 'each']}, 
+        {'@!aggr' : '_mapped'}
+    ]).then((r)=>{
+         console.log(r); //'[{"a":2},{"a":3},{"a":4}]';
     });
 ```
 ### sort(array, key, desc)
@@ -223,7 +223,7 @@ Sorts "array" by "key". By default order is ascending if "desc" is true, the ord
     });
 ```
 ### frame(array, offset, limit)
-Removes from "array" "offest" items from the begging and leaves only "limit" items in the array
+Removes from "array" "offset" items from the begging and leaves only "limit" items in the array
 ```javascript
     liteql.addResources({
         array(){
