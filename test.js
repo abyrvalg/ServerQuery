@@ -89,6 +89,11 @@ var tests = [
 		return inst1.call(['array', {'!@frame' : ['_array', 1, 1]}]).then((r)=>{
 			return JSON.stringify(r) == '[{"a":2}]';
 		})
+	},
+	()=>{
+		return inst1.call([{'m1>m':'3*(2+2)-8/4'}, {'m1':'!(_m>12)'}]).then((r)=>{
+			return JSON.stringify(r) == '{"m":10,m1:true}'
+		});
 	}
 ];
 

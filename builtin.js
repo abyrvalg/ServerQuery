@@ -67,5 +67,8 @@ module.exports = {
 	},
 	frame(items, offset, limit){
 		return items.slice(offset, offset+limit)
+	},
+	"if" : (condition, iftrue, iffalse)=>{
+		
 	}
 }
