@@ -94,6 +94,13 @@ var tests = [
 		return inst1.call([{'m1>m':'3*(2+2)-8/4'}, {'m1':'!(_m>12)'}]).then((r)=>{
 			return JSON.stringify(r) == '{"m":10,m1:true}'
 		});
+	},
+	()=>{
+		return inst1.call('m1:"bla";\
+				m2:$m1+"r";\
+				$eight=(2+2)*2;').then((r)=>{
+				
+				});
 	}
 ];
 

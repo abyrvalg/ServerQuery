@@ -1,6 +1,24 @@
 const builtIn = require('./builtin'),
 	tools = require('./tools');
 
+const ops = [
+	{'!' : (p)=>!p},
+	{'*' : (p1,p2)=>p1*p2},
+	{"/" : (p1,p2)=>p1/p2},
+	{"%" : (p1,p2)=>p1%p2},
+	{'+' : (p1,p2)=>p1+p2},
+	{'-' : (p1,p2)=>p1-p2},
+	{'<='  : (p1,p2)=>p1<=p2},
+	{'>=' : (p1,p2)=>p1<=p2},
+	{'!=' : (p1,p2)=>p1!=p2},
+	{'=' : (p1,p2)=>p1==p2},
+	{'<' : (p1,p2)=>p1<p2},
+	{'>' : (p1,p2)=>p1<p2},
+	{'||' : (p1,p2)=>p1||p2},
+	{'&&' : (p1,p2)=>p1||p2}
+];
+const specialCharacters = "^\\!\\*\\/\\%\\+\\-\\<\\>\\=";
+
 var sharedResourceMethods;
 class LiteQL{
 	constructor(options){
@@ -31,6 +49,38 @@ class LiteQL{
 		context.promise = promise;
 		context.handleQuery = handleQuery;	
 		context.getResourceFunction = getResourceFunction;
+		
+		
+		
+		var resolveParams  = (()=>{
+			var callbacks;
+				subscribe = (keys, cb)=>{
+					callbacks[keys.sort().join('|')];
+				}
+			Object.observe(buffer, (p)=>{
+				for(let key in callbacs){
+					let params = key.split('|'),
+						resolved = true;					
+					for(let k in params){
+						if(!buffer[params[k]]) {resolved = false; break;}
+					}
+					if(resolved){
+						callbacks[key];
+					}
+				}
+			}, ["add"]);
+			return (operator)=>{
+				var params = operator.match(/\$w+/g);
+				for(let key in params){
+					if(!buffer[params.key])
+						return new Promise((resolve)=>{
+							subscribe(params, resolve)
+						})
+				}
+				return Promise.resolve();
+			}
+		})();
+		
 		function getResourceFunction(queryMethod, params, subQuery){	
 			var key = queryMethod.getterKey,
 				cacheEntryPoint = cache[key+JSON.stringify(params)];
@@ -67,41 +117,108 @@ class LiteQL{
 			}			
 			return method;
 		}
-		!(query instanceof Array) && (query = [query]);
-		function handleQuery(query) {
-			for(let i = 0; i < query.length; i++) {
-				let currentKey;		
-				if(typeof query[i] == 'string') {
-					query[i] = {[query[i]] : null}
+		//!(query instanceof Array) && (query = [query]);
+		function runOperator(operator, buffer){
+			function resolveDataType(p){
+				if(p[0] == "$") return buffer[p];
+				if(~['true', 'false'].indexOf(p)) return p == 'true';
+				if((/^\d+$/)) return +p;
+				return p.replace(/^['"](\S+)['"]$/, "$1");
+			};
+			resolveParams(operator).then(()=>{
+				for(let i; i < ops.length; i++){
+					for(let key in ops[i]) {
+						if(ops[i][key].length == 1){
+							operator.replace(new RegExp('\\'+key+'([^'+specialCharacters+'])'+'+','g'), (match, p)=>{								
+								bufer.anonymous.push(ops[key](p));
+								return '$'+buffer.anonymous.lenfth-1;
+							});
+						} 
+						else {
+							operator.replace(new RegExp('\\'+'([^'+specialCharacters+'])'+key+'([^'+specialCharacters+'])'+'+','g'), (match, p1, p2)=>{
+								bufer.anonymous.push(ops[key](p1, p2));
+								return '$'+buffer.anonymous.lenfth-1;
+							});
+						}
+					}
 				}
-				for(let key in query[i]){
-					currentKey = tools.parseKey(key);						
-					promise = promise.then((obj)=>{
-						var params = tools.getParams(query[i][key], buffer);
-						context.cacheSettings = [];
-						context.buffer = buffer;
-						context.cache = cache;
-						context.scope = scope;			
-						return getResourceFunction(currentKey, params, query[i])
-							.apply(context, params);
-
+			});
+			return operator;
+		}
+		
+		function handleExpression(expr){
+			let decompsed = expr.match(/^(\w+\=)?(\w+\|)?([\S]+)?$/);
+			if(decompsed[3]) {
+				decompsed[3].replace(/\w+\|[\S]+/g, (m, body)=>{
+					bufer.anonymous.push(handleExpression(body));
+					return '$'+buffer.anonymous.lenfth-1
+				});
+				var params = JSON.parse("["+decompsed[3].replace(/\$\w+/g, '"$0"')+"]");
+				for(let i = 0; j < params.length; i++){
+					params[i] = runOperator(params[i]);
+				}
+			}
+			if(decomposed[2]){
+				buffer[decomposed[1] || decomposed[2]] = getMethod(decomposed[2]).apply(context, params);
+			}
+			else {
+				
+			}
+		}
+		
+		function handleQuery(query) {
+			if(typeof query == "string"){
+				query = replace(/\"([^"]+)\"|\'([^']+)\'/g, (m, str)=>{
+					buffer.anonymous.push(str);
+					return '$_anonymous'+buffer.lenfth-1
+				}).replace(/\s+/g,'');
+				
+				while(query.indexOf('(')) //execute brackets
+					query.replace(/\([^\(\)])\)/g, (m, body)=>{
+						buffer.anonymous.push(handleStrQuery(body));
+						return '$_anonymous'+buffer.lenfth-1
+					});
+				
+				query = query.split(';');
+				for(let i = 0; i < query.length; i++){
+					handleExpression(query[i]);
+				}
+			}
+			else {
+				for(let i = 0; i < query.length; i++) {
+					let currentKey;		
+					if(typeof query[i] == 'string') {
+						query[i] = {[query[i]] : null}
+					}
+					for(let key in query[i]){
+						currentKey = tools.parseKey(key);						
+						promise = promise.then((obj)=>{
+							var params = tools.getParams(query[i][key], buffer);
+							context.cacheSettings = [];
+							context.buffer = buffer;
+							context.cache = cache;
+							context.scope = scope;			
+							return getResourceFunction(currentKey, params, query[i])
+								.apply(context, params);
+	
+						});
+					}
+					promise = promise.then(function(result){
+						if(result == '__defer__'){
+							deferred.push(query[i]);
+							return obj;
+						}
+						if(currentKey.mode == "standard") {
+							obj[currentKey.settterKey] = result; 						
+						}
+						else if(currentKey.mode == "dominant" && result !== null) {
+							obj = result;
+						}
+						buffer[currentKey.settterKey] = result;
+								
+						return obj
 					});
 				}
-				promise = promise.then(function(result){
-					if(result == '__defer__'){
-						deferred.push(query[i]);
-						return obj;
-					}
-					if(currentKey.mode == "standard") {
-						obj[currentKey.settterKey] = result; 						
-					}
-					else if(currentKey.mode == "dominant" && result !== null) {
-						obj = result;
-					}
-					buffer[currentKey.settterKey] = result;
-							
-					return obj
-				});
 			}
 			return promise;
 		}
