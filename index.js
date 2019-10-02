@@ -131,13 +131,13 @@ class LiteQL{
 						if(ops[i][key].length == 1){
 							operator.replace(new RegExp('\\'+key+'([^'+specialCharacters+'])'+'+','g'), (match, p)=>{								
 								bufer.anonymous.push(ops[key](p));
-								return '$'+buffer.anonymous.lenfth-1;
+								return '$_anonymous'+buffer.anonymous.lenfth-1;
 							});
 						} 
 						else {
 							operator.replace(new RegExp('\\'+'([^'+specialCharacters+'])'+key+'([^'+specialCharacters+'])'+'+','g'), (match, p1, p2)=>{
 								bufer.anonymous.push(ops[key](p1, p2));
-								return '$'+buffer.anonymous.lenfth-1;
+								return '$_anonymous'+buffer.anonymous.lenfth-1;
 							});
 						}
 					}
@@ -147,11 +147,11 @@ class LiteQL{
 		}
 		
 		function handleExpression(expr){
-			let decompsed = expr.match(/^(\w+\=)?(\w+\|)?([\S]+)?$/);
+			let decompsed = expr.match(/^(\w+\=)?(\w+\?)?([\S\s]+)?$/);
 			if(decompsed[3]) {
-				decompsed[3].replace(/\w+\|[\S]+/g, (m, body)=>{
+				decompsed[3].replace(/\w+\?[\S\s]+/g, (m, body)=>{ //handle function calls in params
 					bufer.anonymous.push(handleExpression(body));
-					return '$'+buffer.anonymous.lenfth-1
+					return '$_anonymous'+buffer.anonymous.lenfth-1
 				});
 				var params = JSON.parse("["+decompsed[3].replace(/\$\w+/g, '"$0"')+"]");
 				for(let i = 0; j < params.length; i++){
@@ -168,7 +168,7 @@ class LiteQL{
 		
 		function handleQuery(query) {
 			if(typeof query == "string"){
-				query = replace(/\"([^"]+)\"|\'([^']+)\'/g, (m, str)=>{
+				query = replace(/\"([^"]+)\"|\'([^']+)\'/g, (m, str)=>{ //save_strings
 					buffer.anonymous.push(str);
 					return '$_anonymous'+buffer.lenfth-1
 				}).replace(/\s+/g,'');
@@ -181,9 +181,10 @@ class LiteQL{
 				
 				query = query.split(';');
 				for(let i = 0; i < query.length; i++){
-					handleExpression(query[i]);
+					handleExpression(query[i])
 				}
 			}
+			
 			else {
 				for(let i = 0; i < query.length; i++) {
 					let currentKey;		

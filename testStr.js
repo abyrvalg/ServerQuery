@@ -12,10 +12,11 @@ var tests = [
 				return Promise.resolve(p);
 			}
 		});
-		inst1.call('m1|"bla";\
-					p=m2|$m1;\
-					bul=m1|true\
-					num=m1|(2+2)*2').then((r)=>{
+		inst1.call('m1?"bla";\
+					p=m2?$m1;\
+					bul=m1?true\
+					num=m1?(2+2)*2;\
+				rec=m1?(m2?$num)').then((r)=>{
 					
 		});
 	}
