@@ -19,6 +19,107 @@ const ops = [
 ];
 const specialCharacters = "^\\!\\*\\/\\%\\+\\-\\<\\>\\=";
 
+function handleQuery(query, buffer, getResourceFunction) {
+	var response = {},
+		promise = Promise.resolve(response);
+	query = query.replace(/\"([^"]+)\"|\'([^']+)\'|(true)|(false)/g, (m, str)=>{ //save strings and Booleans
+		buffer.anonymous.push({"true":true, "false":false}[str] || str);
+		return '$anonymous'+(buffer.anonymous.length-1)
+	}).replace(/\s+/g,'');
+	while(~query.indexOf('(')) //execute brackets
+		query.replace(/\(([^\(\)])\)/g, (m, body)=>{
+			buffer.anonymous.push(handleQuery(body, buffer, getResourceFunction, promise));
+			return '$anonymous'+buffer.lenfth-1;
+		});
+	query = query.split(';');
+	for(let i = 0; i < query.length; i++){
+		promise = promise.then((resp)=>{
+			return handleExpression(query[i], buffer, getResourceFunction).then((exprResult)=>{
+				for(let key in exprResult){
+					response[key] = exprResult[key];
+				}
+				return response;
+			});
+		});
+	}
+	return promise;
+}
+
+function handleExpression(expr, buffer, getResourceFunction){
+	let decomposed = (""+expr).match(/^(\w+\=)?(?:(\w+)\?)?([\S\s]+)?$/),
+		resolvedParams = [],
+		paramsPromise = Promise.resolve(resolvedParams);
+	if(decomposed[3]) {
+		decomposed[3] = decomposed[3].replace(/(?:^|\&)([a-zA-Z]+(?:\?[\S\s]+)?)/g, (m, body)=>{ //handle function calls in params
+			buffer.anonymous.push(handleExpression(body, buffer, getResourceFunction));
+			return '$anonymous'+buffer.anonymous.lenfth-1
+		});
+		var params = JSON.parse("["+decomposed[3].replace(/(\$\w+)/g, '"$1"')+"]"); //[2,true,"$param"]
+		for(let i = 0; i < params.length; i++){
+			paramsPromise = paramsPromise.then((resolvedParams)=>{
+				return runOperator(params[i], buffer)
+			}).then((r)=>{
+				resolvedParams.push(r);
+				return resolvedParams;
+			});
+		}
+	}
+	if(decomposed[2]){
+		return paramsPromise.then((params)=>{
+			var result = getResourceFunction(decomposed[2], params).apply(null, params);
+			buffer[decomposed[1] || decomposed[2]] = result;
+			return {[decomposed[1] || decomposed[2]] : result};
+		});
+	}
+	else {
+		throw "syntax error in expression:"+expr;
+	}
+}
+function runOperator(operator, buffer){
+	function resolveDataType(p){
+		if(p[0] == "$") return buffer[p];
+		if((/^\d+$/)) return +p;
+		return p.replace(/^['"](\S+)['"]$/, "$1");
+	};
+	return resolveParams(operator).then(()=>{
+		for(let i; i < ops.length; i++){
+			for(let key in ops[i]) {
+				if(ops[i][key].length == 1){
+					operator.replace(new RegExp('\\'+key+'([^'+specialCharacters+'])'+'+','g'), (match, p)=>{
+						buffer.anonymous.push(ops[key](p));
+						return '$anonymous'+buffer.anonymous.lenfth-1;
+					});
+				}
+				else {
+					operator.replace(new RegExp('\\'+'([^'+specialCharacters+'])'+key+'([^'+specialCharacters+'])'+'+','g'), (match, p1, p2)=>{
+						buffer.anonymous.push(ops[key](p1, p2));
+						return '$anonymous'+buffer.anonymous.lenfth-1;
+					});
+				}
+			}
+		}
+		return buffer.anonymous[+operator.substr(10)];
+	});
+	//return operator;
+}
+var resolveParams  = (()=>{
+	var callbacks,
+		subscribe = (keys, cb)=>{
+			callbacks[keys.sort().join('|')];
+		};
+	return (operator, buffer)=>{
+		var params = (""+operator).match(/\$w+/g);
+		for(let key in params){
+			if(!buffer[params.key])
+				return new Promise((resolve)=>{
+					subscribe(params, resolve)
+				})
+		}
+		return Promise.resolve();
+	}
+})();
+
+
 var sharedResourceMethods;
 class LiteQL{
 	constructor(options){
@@ -35,7 +136,9 @@ class LiteQL{
 	}
 	call(query){
 		var obj = {},
-			buffer = {},
+			buffer = {
+				anonymous : []
+			},
 			promise = Promise.resolve(obj),
 			deferred = [],
 			delegated = [],
@@ -45,112 +148,54 @@ class LiteQL{
 			delegatedBuiltin = this.delegatedBuiltin,
 			scope = this.scope,
 			context = {};
-		context.currentQuery = query;	
+		context.currentQuery = query;
 		context.promise = promise;
-		context.handleQuery = handleQuery;	
+		context.handleQuery = handleQuery;
 		context.getResourceFunction = getResourceFunction;
-			
-		var resolveParams  = (()=>{
-			var callbacks;
-				subscribe = (keys, cb)=>{
-					callbacks[keys.sort().join('|')];
+		function getResourceFunction(queryMethod, params, subQuery){
+			var key = queryMethod,
+				cacheEntryPoint = cache[key+JSON.stringify(params)];
+			if(cacheEntryPoint) {
+				let result;
+				if(!cacheEntryPoint.expiration || cacheEntryPoint.expiration > (new Date()).getTime()){
+					result = cacheEntryPoint.val;
+					cacheEntryPoint.singleServe && (delete cache[key+JSON.stringify(params)])
 				}
-			Object.observe(buffer, (p)=>{
-				for(let key in callbacs){
-					let params = key.split('|'),
-						resolved = true;					
-					for(let k in params && !params[k] instanceof Promise){
-						if(!buffer[params[k]]) {resolved = false; break;}
-					}
-					if(resolved){
-						callbacks[key];
-					}
+				else {
+					delete cache[key+JSON.stringify(params)];
 				}
-			}, ["add", "update"]);
-			return (params)=>{
-				var params = operator.match(/\$w+/g);
-				for(let key in params){
-					if(!buffer[params.key])
-						return new Promise((resolve)=>{
-							subscribe(params, resolve)
-						})
+				if(result) {
+					return ()=>result;
 				}
-				return Promise.resolve();
 			}
-		})();
-		
-		function getResourceFunction(queryMethod, params){
-			
+			var method = resources[key] || (resourceMethod ? resourceMethod(key) : (sharedResourceMethods && sharedResourceMethods(key)));
+			if((!method && (~delegatedBuiltin.indexOf(key) || !queryMethod.builtIn)) || queryMethod.delegated) {
+				if(params && !~JSON.stringify(params).indexOf('__failed__')) {
+					for(let key in subQuery){
+						subQuery[key] = params;
+					}
+				}
+				delegated.push(subQuery);
+				return ()=>null;
+			}
+
+			if(~JSON.stringify(params).indexOf('__failed__')){
+				deferred.push(subQuery);
+				return ()=>null;
+			}
+			if(queryMethod.builtIn) {
+				return builtIn[key];
+			}
+			return method;
 		}
 		//!(query instanceof Array) && (query = [query]);
-		function runOperator(operator, buffer){
-			function resolveDataType(p){
-				if(p[0] == "$") return buffer[p];
-				if(~['true', 'false'].indexOf(p)) return p == 'true';
-				if((/^\d+$/)) return +p;
-				return p.replace(/^['"](\S+)['"]$/, "$1");
-			};
-			return resolveParams(operator).then(()=>{
-				for(let i; i < ops.length; i++){
-					for(let key in ops[i]) {
-						if(ops[i][key].length == 1){
-							operator.replace(new RegExp('\\'+key+'([^'+specialCharacters+'])'+'+','g'), (match, p)=>{								
-								bufer.anonymous.push(ops[key](p));
-								return '$_anonymous'+buffer.anonymous.lenfth-1;
-							});
-						} 
-						else {
-							operator.replace(new RegExp('\\'+'([^'+specialCharacters+'])'+key+'([^'+specialCharacters+'])'+'+','g'), (match, p1, p2)=>{
-								bufer.anonymous.push(ops[key](p1, p2));
-								return '$_anonymous'+buffer.anonymous.lenfth-1;
-							});
-						}
-					}
-				}
-				return operator;
-			});
-			//return operator;
-		}
-		
-		function handleExpression(expr){
-			let decompsed = expr.match(/^(\w+\=)?(\w+\?)?([\S\s]+)?$/);
-			if(decompsed[3]) {
-				decompsed[3].replace(/\w+\?[\S\s]+/g, (m, body)=>{ //handle function calls in params
-					bufer.anonymous.push(handleExpression(body));
-					return '$_anonymous'+buffer.anonymous.lenfth-1
-				});
-				var params = JSON.parse("["+decompsed[3].replace(/\$\w+/g, '"$0"')+"]"); //[2,true,"$param"]
-				for(let i = 0; j < params.length; i++){
-					params[i] = runOperator(params[i]);
-				}
+		return handleQuery(query, buffer, getResourceFunction).then((response)=>{
+			if(Object.keys(response).length == 1) for(let key in response){
+				return response[key];
 			}
-			if(decomposed[2]){
-				buffer[decomposed[1] || decomposed[2]] = getMethod(decomposed[2]).apply(context, params);
-			}
-			else {
-				throw "syntax error in expression"+expr;
-			}
-		}
-		
-		function handleQuery(query) {
-				query = replace(/\"([^"]+)\"|\'([^']+)\'/g, (m, str)=>{ //save_strings
-					buffer.anonymous.push(str);
-					return '$_anonymous'+buffer.lenfth-1
-				}).replace(/\s+/g,'');
-				
-				while(query.indexOf('(')) //execute brackets
-					query.replace(/\([^\(\)])\)/g, (m, body)=>{
-						buffer.anonymous.push(handleStrQuery(body));
-						return '$_anonymous'+buffer.lenfth-1
-					});		
-				query = query.split(';');
-				for(let i = 0; i < query.length; i++){
-					handleExpression(query[i])
-				}
-			}
-			return promise;
-		handleQuery(query);
-		if(resources.__delegate__){
+			return response;
+		});
+		/*if(resources.__delegate__){
 			promise = promise.then((obj)=>{
 				if(delegated.length) {
 					delegated = JSON.parse(JSON.stringify(delegated).replace(/~/g, ''));
@@ -160,30 +205,14 @@ class LiteQL{
 						} else {
 							Object.assign(obj, resp)
 						}
-						Object.assign(buffer, resp);						
+						Object.assign(buffer, resp);
 						return obj;
 					})
 				}
 				else {return obj}
 			})
-		}
-		
-		return new Promise((resolve, reject)=>{
-			promise.then((obj)=>{
-				if(deferred.length) {
-					handleQuery(deferred).then(obj=>resolve(obj))				
-				}
-				else {
-					resolve(obj)
-				}
-			}).catch((e)=>{
-				typeof console !== "undefined" 
-					&& console 
-					&& console.error 
-					&& console.error(e);
-				reject(e);
-			});
-		});
+		}*/
+
 	}
 	setResourceMethod(method){
 		resourceMethod = method;

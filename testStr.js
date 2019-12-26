@@ -1,8 +1,20 @@
-const LQ = require('./index'),
+const LQ = require('./strQuery'),
 	inst1 = new LQ(),
 	inst2 = new LQ();
 
 var tests = [
+	()=>{
+		inst1.addResources({
+			m1(p){
+				console.log("called"+p);
+				return p;
+			}
+		});
+		return inst1.call('m1?"bla"').then((r)=>{
+			console.log(r);
+			return r == "bla";
+		});
+	}/*,
 	()=>{
 		inst1.addResources({ //test 0
 			m1(p){
@@ -12,14 +24,14 @@ var tests = [
 				return Promise.resolve(p);
 			}
 		});
-		inst1.call('m1?"bla";\
+		return inst1.call('m1?"bla";\
 					p=m2?$m1;\
 					bul=m1?true\
 					num=m1?(2+2)*2;\
 				rec=m1?(m2?$num)').then((r)=>{
-					
+		return p;
 		});
-	}
+	}*/
 ]
 	for(let i in tests){
 		tests[i]().then((r)=>{
