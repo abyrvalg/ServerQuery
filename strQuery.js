@@ -14,10 +14,10 @@ const ops = [
 	{'=' : (p1,p2)=>p1==p2},
 	{'<' : (p1,p2)=>p1<p2},
 	{'>' : (p1,p2)=>p1<p2},
-	{'||' : (p1,p2)=>p1||p2},
+//	{'||' : (p1,p2)=>p1||p2},
 	{'&&' : (p1,p2)=>p1||p2}
 ];
-const specialCharacters = "^\\!\\*\\/\\%\\+\\-\\<\\>\\=";
+const specialCharacters = "\\!\\*\\/\\%\\+\\-\\<\\>\\=";
 
 function handleQuery(query, buffer, getResourceFunction) {
 	var response = {},
@@ -46,7 +46,7 @@ function handleQuery(query, buffer, getResourceFunction) {
 }
 
 function handleExpression(expr, buffer, getResourceFunction){
-	let decomposed = (""+expr).match(/^(\w+\=)?(?:(\w+)\?)?([\S\s]+)?$/),
+	let decomposed = (""+expr).match(/^(?:(\w+)\=)?(?:(\w+)\?)?([\S\s]+)?$/),
 		resolvedParams = [],
 		paramsPromise = Promise.resolve(resolvedParams);
 	if(decomposed[3]) {
@@ -54,7 +54,7 @@ function handleExpression(expr, buffer, getResourceFunction){
 			buffer.anonymous.push(handleExpression(body, buffer, getResourceFunction));
 			return '$anonymous'+buffer.anonymous.lenfth-1
 		});
-		var params = JSON.parse("["+decomposed[3].replace(/(\$\w+)/g, '"$1"')+"]"); //[2,true,"$param"]
+		var params = decomposed[3].split(",");
 		for(let i = 0; i < params.length; i++){
 			paramsPromise = paramsPromise.then((resolvedParams)=>{
 				return runOperator(params[i], buffer)
@@ -72,7 +72,7 @@ function handleExpression(expr, buffer, getResourceFunction){
 		});
 	}
 	else {
-		throw "syntax error in expression:"+expr;
+		return paramsPromise;
 	}
 }
 function runOperator(operator, buffer){
@@ -82,7 +82,7 @@ function runOperator(operator, buffer){
 		return p.replace(/^['"](\S+)['"]$/, "$1");
 	};
 	return resolveParams(operator).then(()=>{
-		for(let i; i < ops.length; i++){
+		for(let i=0; i < ops.length; i++){
 			for(let key in ops[i]) {
 				if(ops[i][key].length == 1){
 					operator.replace(new RegExp('\\'+key+'([^'+specialCharacters+'])'+'+','g'), (match, p)=>{
@@ -91,8 +91,9 @@ function runOperator(operator, buffer){
 					});
 				}
 				else {
-					operator.replace(new RegExp('\\'+'([^'+specialCharacters+'])'+key+'([^'+specialCharacters+'])'+'+','g'), (match, p1, p2)=>{
-						buffer.anonymous.push(ops[key](p1, p2));
+					operator.replace(new RegExp('([^'+specialCharacters+'])\\'+key+'([^'+specialCharacters+'])'+'+','g'), (match, p1, p2)=>{
+						p01 = JSON.parse("["+p1+", "+p2+"]");
+						buffer.anonymous.push(ops[i][key](p01[0], p01[1]));
 						return '$anonymous'+buffer.anonymous.lenfth-1;
 					});
 				}
