@@ -14,7 +14,7 @@ const ops = [
 	{'=' : (p1,p2)=>p1==p2},
 	{'<' : (p1,p2)=>p1<p2},
 	{'>' : (p1,p2)=>p1<p2},
-//	{'||' : (p1,p2)=>p1||p2},
+	{'||' : (p1,p2)=>p1||p2},
 	{'&&' : (p1,p2)=>p1||p2}
 ];
 const specialCharacters = "\\!\\*\\/\\%\\+\\-\\<\\>\\=";
@@ -66,7 +66,7 @@ function handleExpression(expr, buffer, getResourceFunction){
 	}
 	if(decomposed[2]){
 		return paramsPromise.then((params)=>{
-			var result = getResourceFunction(decomposed[2], params).apply(null, params);
+			var result = getResourceFunction(decomposed[2], params, expr).apply(null, params);
 			buffer[decomposed[1] || decomposed[2]] = result;
 			return {[decomposed[1] || decomposed[2]] : result};
 		});
@@ -77,31 +77,29 @@ function handleExpression(expr, buffer, getResourceFunction){
 }
 function runOperator(operator, buffer){
 	function resolveDataType(p){
-		if(p[0] == "$") return buffer[p];
-		if((/^\d+$/)) return +p;
-		return p.replace(/^['"](\S+)['"]$/, "$1");
+		if(/^\d+$/.test(p)) return +p;
 	};
 	return resolveParams(operator).then(()=>{
+		//console.log(operator);
 		for(let i=0; i < ops.length; i++){
 			for(let key in ops[i]) {
 				if(ops[i][key].length == 1){
-					operator.replace(new RegExp('\\'+key+'([^'+specialCharacters+'])'+'+','g'), (match, p)=>{
+					operator = operator.replace(new RegExp(key.replace(/(\S)/g, '\\$1')+'([^'+specialCharacters+'])'+'+','g'), (match, p)=>{
 						buffer.anonymous.push(ops[key](p));
-						return '$anonymous'+buffer.anonymous.lenfth-1;
+						return '$anonymous'+(buffer.anonymous.length-1);
 					});
 				}
 				else {
-					operator.replace(new RegExp('([^'+specialCharacters+'])\\'+key+'([^'+specialCharacters+'])'+'+','g'), (match, p1, p2)=>{
-						p01 = JSON.parse("["+p1+", "+p2+"]");
-						buffer.anonymous.push(ops[i][key](p01[0], p01[1]));
-						return '$anonymous'+buffer.anonymous.lenfth-1;
+					operator = operator.replace(new RegExp('([^'+specialCharacters+'])'+key.replace(/(\S)/g, '\\$1')+'([^'+specialCharacters+'])'+'+','g'), (match, p1, p2)=>{
+						buffer.anonymous.push(ops[i][key](+p1, +p2));
+						return '$anonymous'+(buffer.anonymous.length-1);
 					});
 				}
 			}
 		}
-		return buffer.anonymous[+operator.substr(10)];
+		return operator[0] == "$" ? buffer.anonymous[+operator.substr(10)] : +operator;
 	});
-	//return operator;
+//TODO: solve number parameters issue
 }
 var resolveParams  = (()=>{
 	var callbacks,
@@ -171,13 +169,8 @@ class LiteQL{
 			}
 			var method = resources[key] || (resourceMethod ? resourceMethod(key) : (sharedResourceMethods && sharedResourceMethods(key)));
 			if((!method && (~delegatedBuiltin.indexOf(key) || !queryMethod.builtIn)) || queryMethod.delegated) {
-				if(params && !~JSON.stringify(params).indexOf('__failed__')) {
-					for(let key in subQuery){
-						subQuery[key] = params;
-					}
-				}
 				delegated.push(subQuery);
-				return ()=>null;
+				return ()=>"__delagated__";
 			}
 
 			if(~JSON.stringify(params).indexOf('__failed__')){
@@ -189,30 +182,37 @@ class LiteQL{
 			}
 			return method;
 		}
-		//!(query instanceof Array) && (query = [query]);
-		return handleQuery(query, buffer, getResourceFunction).then((response)=>{
+		promise = handleQuery(query, buffer, getResourceFunction).then((response)=>{
 			if(Object.keys(response).length == 1) for(let key in response){
 				return response[key];
 			}
 			return response;
 		});
-		/*if(resources.__delegate__){
+		if(resources.__delegate__){
 			promise = promise.then((obj)=>{
 				if(delegated.length) {
-					delegated = JSON.parse(JSON.stringify(delegated).replace(/~/g, ''));
-					return resources.__delegate__(delegated).then((resp)=>{
-						if(~JSON.stringify(delegated).indexOf('!')){
-							obj = resp;
-						} else {
-							Object.assign(obj, resp)
+					return resources.__delegate__(delegated.join(';').replace(/\$([a-zA-Z0-9]+)/, (match, key)=>{
+						var val = (/anonymous\d+/).test(key) ? buffer.anonymous[key.match(/\d+/)[0]] :  buffer[key];
+						return typeof val == "string" ? '"'+val+'"' : val;
+					})).then((resp)=>{
+						if(delegated.length == 1){
+							let key = delegated[0].match(/^(\w+)\?/)[1];
+							resp = {[key]:resp};
 						}
 						Object.assign(buffer, resp);
+						if(obj) {
+							Object.assign(obj, resp);
+						} else {
+							obj = resp;
+						}
+
 						return obj;
 					})
 				}
 				else {return obj}
 			})
-		}*/
+		}
+		return promise
 
 	}
 	setResourceMethod(method){
