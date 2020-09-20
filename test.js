@@ -6,6 +6,7 @@ var tests = [
 	()=>{
 		inst1.addResources({ //test 0
 			m1(p){
+				console.log(p);
 				return p;
 			},
 			m2(p){
@@ -53,7 +54,7 @@ var tests = [
 	},
 	()=>{
 		return inst1.call({"@set":["a", "asdfg"]}).then(()=>{
-			return inst1.call({"!@get":"a"}).then((r)=>{				
+			return inst1.call({"!@get":"a"}).then((r)=>{
 				return r === "asdfg";
 			})
 		});
@@ -66,7 +67,7 @@ var tests = [
 		});
 		inst1.addResources({
 			array(){
-				return [{a : 1}, {a : 2}, {a : 3}] 
+				return [{a : 1}, {a : 2}, {a : 3}]
 		}});
 			inst1.addResources({
 				each(item) {
@@ -74,8 +75,8 @@ var tests = [
 				return item;
 			}
 		});
-		return inst2.call(['array', 
-			{'@~map>mapped' : ['_array', 'each']}, 
+		return inst2.call(['array',
+			{'@~map>mapped' : ['_array', 'each']},
 			{'@!~aggr' : '_mapped'}]).then((r)=>{
 			return JSON.stringify(r) == '[{"a":2},{"a":3},{"a":4}]';
 		});
@@ -99,12 +100,13 @@ var tests = [
 		return inst1.call('m1:"bla";\
 				m2:$m1+"r";\
 				$eight=(2+2)*2;').then((r)=>{
-				
+
 				});
 	}
 ];
 
 	for(let i in tests){
+		console.log(i);
 		tests[i]().then((r)=>{
 			console.log('test '+i+':'+(r ? 'ok' : 'fail'));
 		});
