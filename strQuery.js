@@ -1,5 +1,7 @@
 const builtIn = require('./builtin');
 const DELEGATED = Symbol();
+const QUERY = Symbol();
+const FUNC = Symbol();
 
 const ops = [
 	{'!' : (p)=>!p},
@@ -22,28 +24,20 @@ const specialCharacters = "\\!\\*\\/\\%\\+\\-\\<\\>\\=";
 function handleQuery(query, buffer, getResourceFunction, __delegate__, delegated) {
 	var response = {},
 		promise = Promise.resolve(response),
-		extraPromises = [];
-
+		extraPromises = [];	
 	query = query.replace(/\"([^"]+)\"|\'([^']+)\'|(true)|(false)/g, (m, str)=>{ //save strings and Booleans
 		buffer.anonymous.push({"true":true, "false":false}[str] || str);
 		return '$_'+(buffer.anonymous.length-1);
-	}).replace(/\s+/g,'').replace(/[^a-z_](\d+)[^a-z_]/ig, (m, num)=>{
+	}).replace(/\s+/g,'').replace(/(^|[^a-z_])(\d+)(?=[^a-z_]|$)/ig, (m, pre, num)=>{ //save numbers
 		buffer.anonymous.push(+num);
-		return '$_'+(buffer.anonymous.length-1);
+		return pre+'$_'+(buffer.anonymous.length-1);
 	});
-	while(~query.indexOf('{'))
-		query = query.replace(/\{[^\{\}]\}/g, (func)=>{ //save functions
-			buffer.anonymous.puhs({func : func});
+	/*while(~query.indexOf('{'))
+		query = query.replace(/\{[^\{\}]\}/g, (func)=>{ //save functions			
+			buffer.anonymous.puhs({[FUNC] : func});
 			return '$_'+(buffer.anonymous.length-1);
-		})
-	while(~query.indexOf('(')) //save brackets
-		query = query.replace(/\(([^\(\)]+)\)/g, (m, query)=>{
-			buffer.anonymous.push({query:query});
-			return '$anonymous'+(buffer.anonymous.length-1);
-		});
+		});*/
 	query = query.split(';');
-
-
 	for(let i = 0; i < query.length; i++){
 		promise = promise.then((resp)=>{
 			return handleExpression(query[i], buffer, getResourceFunction, extraPromises).then((exprResult)=>{
@@ -57,8 +51,8 @@ function handleQuery(query, buffer, getResourceFunction, __delegate__, delegated
 	if(__delegate__){
 		promise = promise.then((obj)=>{
 			if(delegated.length) {
-				return __delegate__(delegated.join(';').replace(/\$([a-zA-Z0-9]+)/, (match, key)=>{
-					var val = (/anonymous\d+/).test(key) ? buffer.anonymous[key.match(/\d+/)[0]] :  buffer[key];
+				return __delegate__(delegated.join(';').replace(/\$(\_[a-zA-Z0-9]+)/, (match, key)=>{
+					var val = (/\_\d+/).test(key) ? buffer.anonymous[key.match(/\d+/)[0]] :  buffer[key];
 					return typeof val == "string" ? '"'+val+'"' : val;
 				})).then((resp)=>{
 					if(delegated.length == 1){
@@ -141,36 +135,43 @@ function handleExpression(expr, buffer, getResourceFunction, extraPromises){
 		return paramsPromise;
 	}
 }
+function getValFromBuffer(buffer, key) {
+	return /^\$\_/.test(key) ? buffer.anonymous[+key.substr(2)] : buffer[key.replace(/^\$/, "")];
+}
 function runOperator(operator, buffer){
-	function resolveDataType(p){
-		if(/^\d+$/.test(p)) return +p;
-	};
-	function run(){
+	function run(operator){
+		while(~operator.indexOf('('))
+			operator = operator.replace(/\(([^\(\)]+)\)/, (m, op)=>{
+				buffer.anonymous.push(run(op));
+				return '$_'+(buffer.anonymous.length-1);
+			});
 		for(let i=0; i < ops.length; i++){
 			for(let key in ops[i]) {
 				if(ops[i][key].length == 1){
-					operator = operator.replace(new RegExp(key.replace(/(\S)/g, '\\$1')+'([^'+specialCharacters+']+?)'+'+','g'), (match, p)=>{
-						buffer.anonymous.push(ops[key](p));
-						return '$anonymous'+(buffer.anonymous.length-1);
+					operator = operator.replace(new RegExp(key.replace(/(\S)/g, '\\$1')+'([^'+specialCharacters+']+?)'+'+','g'), (match, p)=>{				
+						buffer.anonymous.push(ops[key](getValFromBuffer(buffer, p)));
+						return '$_'+(buffer.anonymous.length-1);
 					});
 				}
-				else {
-					operator = operator.replace(new RegExp('([^'+specialCharacters+']+?)'+key.replace(/(\S)/g, '\\$1')+'([^'+specialCharacters+'])'+'+','g'), (match, p1, p2)=>{
-						buffer.anonymous.push(ops[i][key](+p1, +p2));
-						return '$anonymous'+(buffer.anonymous.length-1);
+				else {				
+					operator = operator.replace(new RegExp('([^'+specialCharacters+']+?)'+key.replace(/(\S)/g, '\\$1')+'([^'+specialCharacters+']+)'+'+','g'), (match, p1, p2)=>{
+						buffer.anonymous.push(ops[i][key](getValFromBuffer(buffer, p1), getValFromBuffer(buffer, p2)));
+						return '$_'+(buffer.anonymous.length-1);
 					});
-				}
-				operator = operator.replace(/\$anonymous(\d+)/, (match, p)=>buffer["anonymous"][p]);
+				}				
 			}
 		}
-		return operator[0] == "$" ? (/^\$anonymous/.test(operator) ? buffer.anonymous[+operator.substr(10)] : buffer[operator.replace(/^\$/, "")]) : +operator;
+		return JSON.parse(operator.replace(/\$[\_\da-z]+/g, (key)=>{
+			var val = getValFromBuffer(buffer, key);
+			return typeof val == "string" ? '"'+val+'"' : ""+val;
+		}));
 	}
 	var reslovedParam = paramsMgr.resolveParams(operator, buffer);
-	if(reslovedParam === true){
-		return run();
+	if(reslovedParam === true){		
+		return run(operator);
 	}
 	return reslovedParam.then(()=>{
-		return run();
+		return run(operator);
 	});
 
 }
@@ -201,7 +202,7 @@ var paramsMgr  = (()=>{
 			var params = (""+operator).match(/\$\w+/g);
 			for(let key in params){
 				let val;
-				if(/^\$anonymous/.test(params[key])) {
+				if(/^\$\_/.test(params[key])) {
 					let num = params[key].match(/\d+$/);
 					num = num && num[0];
 					val = buffer.anonymous[num]
