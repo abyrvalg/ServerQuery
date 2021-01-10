@@ -96,7 +96,7 @@ function handleExpression(expr, buffer, getResourceFunction, extraPromises){
 	if(decomposed[3]) {
 		decomposed[3] = decomposed[3].replace(/(?:^|\&)([a-zA-Z]+(?:\?[\S\s]+)?)/g, (m, body)=>{ //handle function calls in params
 			buffer.anonymous.push(handleExpression(body, buffer, getResourceFunction, extraPromises));
-			return '$anonymous'+buffer.anonymous.lenfth-1
+			return '$_'+buffer.anonymous.lenfth-1
 		});
 		var params = decomposed[3].split("&");
 		for(let i = 0; i < params.length; i++){
@@ -109,8 +109,15 @@ function handleExpression(expr, buffer, getResourceFunction, extraPromises){
 					}).then((params)=>{
 						if(decomposed[2]){
 							var result = getResourceFunction(decomposed[2], params, expr).apply(null, params);
-							buffer[decomposed[1] || decomposed[2]] = result;
-							return {[decomposed[1] || decomposed[2]] : result};
+							if(result instanceof Promise) {
+								return result.then(r=>{									
+									buffer[decomposed[1] || decomposed[2]] = r;
+									return {[decomposed[1] || decomposed[2]] : r};
+								});
+							} else {
+								buffer[decomposed[1] || decomposed[2]] = result;
+								return {[decomposed[1] || decomposed[2]] : result};
+							}							
 						}else {
 							return operatorResult;
 						}
@@ -127,8 +134,15 @@ function handleExpression(expr, buffer, getResourceFunction, extraPromises){
 	if(decomposed[2]){
 		return paramsPromise.then((params)=>{
 			var result = getResourceFunction(decomposed[2], params, expr).apply(null, params);
-			buffer[decomposed[1] || decomposed[2]] = result;
-			return {[decomposed[1] || decomposed[2]] : result};
+			if(result instanceof Promise) {
+				return result.then(r=>{
+					buffer[decomposed[1] || decomposed[2]] = r;
+					return {[decomposed[1] || decomposed[2]] : r};
+				});
+			} else {
+				buffer[decomposed[1] || decomposed[2]] = result;
+				return {[decomposed[1] || decomposed[2]] : result};
+			}			
 		});
 	}
 	else {
