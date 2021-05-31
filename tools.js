@@ -17,7 +17,10 @@ module.exports = {
 			if(key == 'this') {
 				return JSON.stringify(obj);
 			}
-			val = lookDeep(key, obj) || '__failed__';
+			val = lookDeep(key, obj);
+			if(val === undefined) {
+				val = '__failed__';
+			}
 			if(typeof val == 'object') {
 				val = JSON.stringify(val);
 			}
